@@ -137,3 +137,5 @@ The `userConfig` is propagated down into each `Folder` at insertion time via `me
 - [[Connection Graph]] — the `Conn` value inside each `Folder`
 - [[Symbol Model]] — `Sym` types extracted from `Structure`
 - [[Overview]] — high-level architecture context
+- [[research/lsp/04-synchronization|LSP 3.17 — Document Synchronization]] — the LSP messages that trigger `Doc` creation and updates
+- [[research/lsp/06-workspace-features|LSP 3.17 — Workspace Features]] — workspace folder and file-watching protocol

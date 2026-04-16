@@ -16,6 +16,15 @@ See [[WIKI#Operations]] for operation conventions.
 
 ---
 
+## [2026-04-16] ingest | research/ — index research into wiki
+
+- Added `## Research` section to [[index]] (11 LSP spec files + Zettelkasten)
+- Added `## Related` sections to all 9 LSP 3.17 spec files pointing to relevant wiki pages
+- Added `## Related` section to [[research/Zettelkasten|Zettelkasten]] pointing to [[Wiki Links]]
+- Added research back-links to all 11 wiki pages: [[Wiki Links]], [[Completions]], [[Diagnostics]], [[Navigation]], [[Rename]], [[Table of Contents]], [[Overview]], [[Data Flow]], [[Workspace Model]], [[Connection Graph]], [[Config Reference]]
+
+---
+
 ## [2026-04-16] init | Marksman codebase — initial wiki setup
 
 - Created: [[WIKI]], [[index]], [[log]]

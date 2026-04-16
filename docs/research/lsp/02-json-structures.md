@@ -1569,4 +1569,7 @@ A `TraceValue` represents the level of verbosity with which the server systemati
 export type TraceValue = 'off' | 'messages' | 'verbose';
 ```
 
+## Related
 
+- [[Symbol Model]] — Marksman's internal symbol types, which map to LSP `DocumentSymbol` and related structures
+- [[Data Flow]] — how JSON structures flow through the server pipeline

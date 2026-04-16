@@ -377,3 +377,7 @@ interface ProgressParams<T> {
 
 Progress is reported against a token. The token is different than the request ID which allows to report progress out of band and also for notification.
 
+## Related
+
+- [[Overview]] — how Marksman uses the base protocol (JSON-RPC over stdin/stdout)
+- [[Data Flow]] — JSON-RPC message handling in `Server.fs`

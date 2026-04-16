@@ -65,3 +65,4 @@ Each completion item includes:
 - [[Wiki Links]] — syntax and resolution rules for wiki links
 - [[Config Reference]] — `completion.wiki.style`, `completion.candidates`
 - [[Workspace Model]] — how folders and documents are indexed
+- [[research/lsp/05-language-features|LSP 3.17 — Language Features]] — `textDocument/completion` protocol specification

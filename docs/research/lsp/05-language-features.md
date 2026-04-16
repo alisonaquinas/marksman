@@ -6082,3 +6082,11 @@ export interface LinkedEditingRanges {
 
 - error: code and message set in case an exception happens during the ‘textDocument/linkedEditingRange’ request
 
+## Related
+
+- [[Completions]] — `textDocument/completion` implementation
+- [[Diagnostics]] — `textDocument/publishDiagnostics` and pull-diagnostics implementation
+- [[Navigation]] — `textDocument/definition`, `textDocument/references`, `textDocument/hover`
+- [[Rename]] — `textDocument/rename` and `textDocument/prepareRename`
+- [[Table of Contents]] — `textDocument/codeAction` (TOC generation)
+- [[Wiki Links]] — document link and document symbol protocol used for wiki links

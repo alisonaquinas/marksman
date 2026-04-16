@@ -1083,4 +1083,7 @@ export interface NotebookDocumentIdentifier {
 }
 ```
 
+## Related
 
+- [[Workspace Model]] — how `Doc` is created and updated when sync events arrive
+- [[Data Flow]] — document sync events in the request pipeline

@@ -1208,3 +1208,7 @@ A notification to ask the server to exit its process. The server should exit wit
 - method: ‘exit’
 - params: none
 
+## Related
+
+- [[Data Flow]] — server startup, `initialize` handshake, and shutdown in `Server.fs`
+- [[Config Reference]] — `ClientCapabilities` negotiated during `initialize`

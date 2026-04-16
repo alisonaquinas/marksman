@@ -93,6 +93,11 @@ Jean Paul's idyll The Life of Quintus Fixlein (1796) has the subtitle as Drawn f
 - Reference management software
 - Tag (metadata)
 
+## Related
+
+- [[Wiki Links]] — Marksman's wiki-link feature directly implements the Zettelkasten cross-reference model in a Markdown LSP server
+- [[research/index|Research Index]] — all research notes in this wiki
+
 ## References
 
 1. Moeller, Hans-Bernhard (1989) [1971]. "Perception, Word-Play, and the Printed Page: Arno

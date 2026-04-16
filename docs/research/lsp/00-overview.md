@@ -22,3 +22,7 @@ A detailed list of the changes can be found in the [change log](#version_3_17_0)
 
 The version of the specification is used to group features into a new specification release and to refer to their first appearance. Features in the spec are kept compatible using so called capability flags which are exchanged between the client and the server during initialization.
 
+## Related
+
+- [[Overview]] — Marksman architecture overview; LSP is the protocol it implements
+- [[Data Flow]] — how LSP requests travel through the Marksman server

@@ -54,3 +54,5 @@ Marksman treats a directory containing a ==`.marksman.toml`== file as a project 
 - [[Layers]] — compile-order layers and per-module responsibilities
 - [[Data Flow]] — how a document travels from disk through parse, index, and into LSP responses
 - [[Workspace Model]] — `Doc`, `Folder`, `Workspace`, and how they compose
+- [[research/lsp/00-overview|LSP 3.17 — Overview & What's New]] — the protocol specification Marksman implements
+- [[research/lsp/01-base-protocol|LSP 3.17 — Base Protocol]] — JSON-RPC framing, message types, and error codes

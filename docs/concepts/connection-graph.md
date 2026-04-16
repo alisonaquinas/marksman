@@ -118,3 +118,4 @@ The algorithm proceeds in five phases:
 - [[Symbol Model]] — `ScopedSym`, `Ref`, `Def`, `Scope` type definitions
 - [[Workspace Model]] — `Folder` owns the `Conn` and constructs the Oracle
 - [[Diagnostics]] — consumes `lastTouched` to emit LSP diagnostic messages
+- [[research/lsp/06-workspace-features|LSP 3.17 — Workspace Features]] — workspace symbol and file-event protocol that drives `Conn` updates

@@ -38,3 +38,4 @@ Because `Refs.findElementRefs` traverses the full [[Connection Graph]], rename i
 
 - [[Navigation]] — find-references, which powers the reference collection step
 - [[Connection Graph]] — the edge store queried by `Refs.findElementRefs`
+- [[research/lsp/05-language-features|LSP 3.17 — Language Features]] — `textDocument/rename` and `textDocument/prepareRename` protocol specifications

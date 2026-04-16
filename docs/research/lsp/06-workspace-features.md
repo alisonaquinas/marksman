@@ -1136,3 +1136,7 @@ export interface ApplyWorkspaceEditResult {
 
 - error: code and message set in case an exception happens during the request.
 
+## Related
+
+- [[Workspace Model]] — how workspace folder events update the `Workspace` value
+- [[Connection Graph]] — `Conn` updates driven by workspace file-change events

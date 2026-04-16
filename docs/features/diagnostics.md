@@ -62,3 +62,4 @@ Each `Folder` maintains its own `WorkspaceDiag` map (file URI → diagnostic lis
 - [[Connection Graph]] — the `Conn` data structure that tracks resolved/unresolved links
 - [[Wiki Links]] — link syntax and what counts as a valid target
 - [[Config Reference]] — `core.incremental_references`, `core.paranoid`
+- [[research/lsp/05-language-features|LSP 3.17 — Language Features]] — `textDocument/publishDiagnostics` and pull-diagnostics protocol specifications

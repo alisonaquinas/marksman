@@ -62,3 +62,4 @@ Typing `[[` or a partial `[[doc` triggers the [[Completions]] engine. Candidates
 - [[Diagnostics]] — how broken or ambiguous wiki links produce LSP diagnostics
 - [[Config Reference]] — `completion.wiki.style`, `core.title_from_heading`, GLFM heading IDs
 - [[Symbol Model]] — how headings become resolvable symbols
+- [[research/Zettelkasten|Zettelkasten]] — the card-index PKM method that directly inspired Marksman's wiki-link feature set

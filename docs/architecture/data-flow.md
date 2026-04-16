@@ -69,3 +69,5 @@ Requests expect a response. The worked example here is ==`textDocument/definitio
 - [[Layers]] — compile-order layers and module responsibilities
 - [[Connection Graph]] — how `Conn` stores and resolves cross-document links
 - [[Workspace Model]] — `Doc`, `Folder`, `Workspace` types and their relationships
+- [[research/lsp/03-lifecycle|LSP 3.17 — Lifecycle Messages]] — `initialize`/`shutdown` request definitions
+- [[research/lsp/04-synchronization|LSP 3.17 — Document Synchronization]] — `textDocument/didOpen` and `didChange` message definitions

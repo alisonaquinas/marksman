@@ -63,3 +63,4 @@ The workspace symbol query accepts a free-text string and returns headings acros
 - [[Connection Graph]] — the edge store powering find-references
 - [[Symbol Model]] — how headings are indexed as symbols
 - [[Workspace Model]] — folder and document structure
+- [[research/lsp/05-language-features|LSP 3.17 — Language Features]] — `textDocument/definition`, `textDocument/references`, `textDocument/hover`, and related protocol specifications

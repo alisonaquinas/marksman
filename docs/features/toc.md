@@ -60,3 +60,4 @@ Example output for a document with H2 and H3 headings and `toc.include = [2,3]`:
 
 - [[Config Reference]] — `code_action.toc.enable`, `code_action.toc.include`
 - [[Wiki Links]] — `[[#heading]]` intra-document link syntax used in TOC entries
+- [[research/lsp/05-language-features|LSP 3.17 — Language Features]] — `textDocument/codeAction` protocol specification

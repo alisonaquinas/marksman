@@ -351,3 +351,7 @@ Since 3.17 there is a meta model describing the LSP protocol:
 - [metaModel.ts](../metaModel/metaModel.ts): A TypeScript file defining the data types that make up the meta model.
 - [metaModel.schema.json](../metaModel/metaModel.schema.json): A JSON schema file defining the data types that make up the meta model. Can be used to generate code to read the meta model JSON file.
 
+## Related
+
+- [[Data Flow]] — window/showMessage and progress notifications in the server
+- [[Build and Test]] — `--verbose` flag triggers `window/logMessage` notifications

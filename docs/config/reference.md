@@ -83,3 +83,4 @@ include = [2, 3]
 - [[Completions]] — `completion.wiki.style`, `completion.candidates`
 - [[Table of Contents]] — `code_action.toc.enable`, `code_action.toc.include`
 - [[Build and Test]] — how to build and run Marksman from source
+- [[research/lsp/03-lifecycle|LSP 3.17 — Lifecycle Messages]] — `initialize` request where `ClientCapabilities` are negotiated alongside server config
