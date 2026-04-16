@@ -55,6 +55,24 @@ See [[WIKI]] for operating conventions.
 
 ---
 
+## Requirements
+
+Planguage-style functional requirements, organised by feature area.
+
+| Page | Summary |
+|------|---------|
+| [[requirements/index\|Requirements Index]] | Master tag list and cross-reference for all 29 requirements |
+| [[requirements/link-resolution\|Link Resolution]] | Wiki-link style binding, single-file mode scope, ignore globs, URL suppression |
+| [[requirements/completions\|Completions]] | Candidate cap (default 50), trigger coverage, isIncomplete flag |
+| [[requirements/diagnostics\|Diagnostics]] | Severity rules, diagnostic codes, debounce latency, relatedInformation |
+| [[requirements/navigation\|Navigation]] | Go-to-definition link-type coverage, find-references completeness, code lens count |
+| [[requirements/rename\|Rename]] | Refactoring completeness, prepareRename validation, style-binding consistency |
+| [[requirements/table-of-contents\|Table of Contents]] | Marker integrity, level filtering, GLFM slug disambiguation, no-action on empty |
+| [[requirements/workspace\|Workspace]] | Project root detection, multi-folder isolation, file-extension filtering |
+| [[requirements/configuration\|Configuration]] | Config layering, candidates validation, fault isolation, text-sync default |
+
+---
+
 ## Development
 
 | Page | Summary |

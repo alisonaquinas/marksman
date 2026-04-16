@@ -16,6 +16,16 @@ See [[WIKI#Operations]] for operation conventions.
 
 ---
 
+## [2026-04-16] init | docs/requirements/ — Planguage functional requirements
+
+- Created [[requirements/index|Requirements Index]] with 29-row master tag table
+- Created 8 feature-area requirement files: link-resolution (4 reqs), completions (3), diagnostics (5), navigation (3), rename (3), table-of-contents (4), workspace (3), configuration (4)
+- Each requirement carries: Tag, Gist, Ambition, Scale, Meter, Fail/Goal where source evidence supports them; skeletons with Open questions where evidence is insufficient
+- Requirements grounded in: `Marksman/Config.fs` (candidate cap default 50, text-sync default Full), `Marksman/Server.fs` (200ms debounce, trigger chars, severity mapping), `docs/features.md`, `docs/configuration.md`
+- Added `## Requirements` section to [[index]]
+
+---
+
 ## [2026-04-16] init | docs/design/api-layer — LSP API layer design document
 
 - Created [[design/api-layer|API Layer]] (440 lines)
