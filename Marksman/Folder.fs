@@ -1,3 +1,5 @@
+/// A workspace root folder: holds all its Docs (multi-file or single-file mode),
+/// a slug/path lookup index, and a Conn cross-document reference graph.
 module Marksman.Folder
 
 open System
@@ -16,6 +18,8 @@ open Marksman.Paths
 open Marksman.MMap
 open Marksman.Syms
 
+/// Folder data for the normal multi-document case: a named root containing a
+/// map of canonicalised paths to Docs and an optional config.
 type MultiFile = {
     name: string
     root: FolderId
@@ -26,8 +30,10 @@ type MultiFile = {
     member this.RootPath = this.root.data
 
 
+/// Folder data for the single-file mode: a lone Doc with an optional config.
 type SingleFile = { doc: Doc; config: option<Config> }
 
+/// Discriminated union that carries either a multi-file or single-file folder payload.
 type FolderData =
     | MultiFile of MultiFile
     | SingleFile of SingleFile
@@ -88,6 +94,8 @@ module FolderData =
 
         mapping
 
+/// Fast lookup structures for a folder: documents indexed by slug and by
+/// path suffix tree, used to resolve wiki-links and path-based references.
 type FolderLookup = {
     docsBySlug: Map<Slug, Set<Doc>>
     docsByPath: SuffixTree<CanonDocPath, Doc>
@@ -95,6 +103,7 @@ type FolderLookup = {
 }
 
 module FolderLookup =
+    /// Build a FolderLookup from folder data by indexing docs by slug and canonical path.
     let ofData (data: FolderData) =
         let config = FolderData.config data
 
@@ -121,6 +130,7 @@ module FolderLookup =
 
             { docsBySlug = bySlug; docsByPath = byPath; config = config }
 
+    /// Return a FolderLookup with the given document removed from both indexes.
     let withoutDoc (doc: Doc) (lookup: FolderLookup) =
         let slug = Doc.slug doc
 
@@ -137,6 +147,7 @@ module FolderLookup =
         let byPath = SuffixTree.remove docPath lookup.docsByPath
         { docsBySlug = bySlug; docsByPath = byPath; config = lookup.config }
 
+    /// Return a FolderLookup with the given document added to both indexes.
     let withDoc (doc: Doc) (lookup: FolderLookup) =
         let slug = Doc.slug doc
 
@@ -242,6 +253,8 @@ module Oracle =
 
         { resolveToScope = resolveToScope; resolveInScope = resolveInScope }
 
+/// A workspace folder combining its document data, fast lookup index, and
+/// cross-document connection graph.
 type Folder = { data: FolderData; lookup: FolderLookup; conn: Conn.Conn }
 
 module Folder =
@@ -488,15 +501,18 @@ module Folder =
 
         docsDifference, symsDifference
 
+    /// Build a Folder from FolderData by constructing the lookup and Conn from scratch.
     let mk data =
         let lookup = FolderLookup.ofData data
         let conn = Conn.Conn.mk (Oracle.oracle data lookup) (FolderData.syms data)
         { data = data; lookup = lookup; conn = conn }
 
+    /// Create a single-file Folder wrapping one Doc.
     let singleFile doc config : Folder =
         let data = SingleFile { doc = doc; config = config }
         mk data
 
+    /// Create a multi-file Folder from a sequence of Docs under the given root.
     let multiFile name root (docs: seq<Doc>) config =
         let byCanonPath =
             docs
@@ -519,6 +535,7 @@ module Folder =
             | SingleFile folder -> SingleFile { folder with config = config } |> mk
             | MultiFile folder -> MultiFile { folder with config = config } |> mk
 
+    /// Load a Folder from disk, reading docs and config; returns None if the directory does not exist.
     let tryLoad (userConfig: option<Config>) (name: string) (folderId: FolderId) : option<Folder> =
         logger.info (
             Log.setMessage "Loading folder documents"
@@ -546,6 +563,8 @@ module Folder =
 
             None
 
+    /// Return an updated Folder that incorporates the new or changed Doc,
+    /// updating the lookup and Conn incrementally (or from scratch when paranoid mode is off).
     let withDoc (newDoc: Doc) { data = prevData; lookup = prevLookup; conn = prevConn } : Folder =
         match prevData with
         | MultiFile folder ->
@@ -612,6 +631,8 @@ module Folder =
 
             mk (SingleFile { folder with doc = newDoc })
 
+    /// Return an updated Folder with the given document removed, or None if this
+    /// was the only document in a single-file folder.
     let withoutDoc (docId: DocId) folder : option<Folder> =
         match folder.data with
         | MultiFile mf ->
@@ -643,6 +664,8 @@ module Folder =
 
     let parserSettings folder = ParserSettings.OfConfig(configOrDefault folder)
 
+    /// Handle an LSP document-close event: reload the doc from disk for multi-file
+    /// folders, or return None for single-file folders.
     let closeDoc (docId: DocId) (folder: Folder) : option<Folder> =
         let parserSettings = parserSettings folder
 

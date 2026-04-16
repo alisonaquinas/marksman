@@ -1,7 +1,14 @@
+/// Injective (function-like) map with an automatically-maintained inverse MMap for
+/// efficient pre-image queries.
 module Marksman.Mapping
 
 open Marksman.MMap
 
+/// An injective mapping from a domain to a codomain, paired with an inverse MMap so that
+/// both forward lookup (image) and reverse lookup (pre-image) are efficient.
+///
+/// Adding a domain element that already exists first removes its old codomain entry from
+/// the inverse before inserting the new association.
 type Mapping<'Dom, 'Cod> when 'Dom: comparison and 'Cod: comparison = {
     mapping: Map<'Dom, 'Cod>
     inverse: MMap<'Cod, 'Dom>
@@ -30,6 +37,7 @@ type Mapping<'Dom, 'Cod> when 'Dom: comparison and 'Cod: comparison = {
     member this.TryPreImage(y: 'Cod) : option<Set<'Dom>> = this.inverse.TryFind(y)
 
 
+/// Functional API for <see cref="Mapping" />.
 module Mapping =
     let empty = { mapping = Map.empty; inverse = MMap.empty }
 

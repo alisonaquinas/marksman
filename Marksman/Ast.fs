@@ -1,9 +1,11 @@
+/// High-level, post-parse AST representation of a Markdown document, stripped of concrete syntax details.
 module Marksman.Ast
 
 open Marksman.Misc
 open Marksman.Names
 open Marksman.Syms
 
+/// An abstract heading with its level, title text, and computed slug id.
 type Heading = {
     level: int
     isTitle: bool
@@ -15,6 +17,7 @@ type Heading = {
         let prefix = String.replicate this.level "#"
         $"{prefix} {this.text} {{{this.id.Raw}}}"
 
+/// An abstract wiki-link with optional target document name and optional heading anchor.
 type WikiLink = {
     doc: option<string>
     heading: option<string>
@@ -31,6 +34,7 @@ type WikiLink = {
         $"[[{doc}{heading}]]"
 
 
+/// An abstract inline Markdown link (<c>[text](url "title")</c>), with url and anchor split out.
 // [text](url "title")
 type MdLink = {
     text: string
@@ -47,12 +51,13 @@ type MdLink = {
 
         $"[{this.text}]({url}{anchor})"
 
+/// An abstract Markdown reference-style link in one of its three syntactic forms.
 type MdRef =
-    // [text][dest]
+    /// Full reference: <c>[text][dest]</c>
     | Full of text: string * dest: string
-    // [dest][]
+    /// Collapsed reference: <c>[dest][]</c>
     | Collapsed of dest: string
-    // [label]
+    /// Shortcut reference: <c>[label]</c>
     | Shortcut of dest: string
 
     member this.CompactFormat() =
@@ -69,6 +74,7 @@ type MdRef =
 
     member this.DestLabel = LinkLabel.ofString this.Dest
 
+/// An abstract Markdown link definition (<c>[label]: url</c>).
 type MdLinkDef = {
     label: string
     url: UrlEncoded
@@ -80,13 +86,20 @@ type MdLinkDef = {
 [<Struct>]
 type Tag = Tag of string
 
+/// Top-level AST element discriminated union covering every meaningful construct in a Markdown document.
 [<RequireQualifiedAccess>]
 type Element =
+    /// A heading.
     | H of Heading
+    /// A wiki-link.
     | WL of WikiLink
+    /// An inline Markdown link.
     | ML of MdLink
+    /// A Markdown reference-style link.
     | MR of MdRef
+    /// A Markdown link definition.
     | MLD of MdLinkDef
+    /// A Zettelkasten tag.
     | T of Tag
 
     member this.CompactFormat() =
@@ -99,17 +112,20 @@ type Element =
         | Element.T(Tag tag) -> $"#{tag}"
 
 module Element =
+    /// Extract the <c>Heading</c> from an element, returning <c>None</c> for non-headings.
     let asHeading =
         function
         | Element.H heading -> Some heading
         | _ -> None
 
+    /// Extract the <c>MdLinkDef</c> from an element, returning <c>None</c> for other variants.
     let asLinkDef =
         function
         | Element.MLD mld -> Some mld
         | _ -> None
 
     // TODO: instead of checking for 'all whitespace' symbols all the time, create smart constructors
+    /// Convert an AST element to its corresponding <c>Sym</c>, or <c>None</c> if the element carries no symbol (e.g. empty anchors).
     let toSym (parserSettings: Config.ParserSettings) (el: Element) : option<Sym> =
         match el with
         | Element.H { level = level; isTitle = isTitle; id = id } ->
@@ -171,4 +187,5 @@ module Element =
         | Element.MLD mdLinkDef -> Some(Syms.Sym.Def(LinkDef(mdLinkDef.Label)))
         | Element.T(Tag tag) -> Some(Syms.Sym.Tag(Syms.Tag tag))
 
+/// The full abstract syntax tree of a Markdown document, as a flat array of elements.
 type Ast = { elements: Element[] }

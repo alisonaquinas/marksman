@@ -1,3 +1,4 @@
+/// Rename refactoring: renames headings, link-definition labels, and updates all referencing links workspace-wide.
 module Marksman.Refactor
 
 open Ionide.LanguageServerProtocol.Types
@@ -12,6 +13,7 @@ open Marksman.Folder
 open Marksman.Structure
 open Marksman.Syms
 
+/// The outcome of a rename operation: a workspace edit, a validation error message, or nothing to do.
 type RenameResult =
     | Edit of WorkspaceEdit
     | Error of string
@@ -181,6 +183,7 @@ let combineDocumentEdits (e1s: array<TextDocumentEdit>) (e2s: array<TextDocument
     |> Seq.map (fun (doc, edits) -> { TextDocument = doc; Edits = edits })
     |> Array.ofSeq
 
+/// Performs a rename at `pos` in `srcDoc`, producing workspace edits for all affected files.
 let rename
     (supportsDocumentEdit: bool)
     (folder: Folder)
@@ -254,6 +257,7 @@ let rename
             Skip
     | _ -> Skip
 
+/// Returns the range of the renameable token at `pos`, used for the LSP prepareRename response.
 let renameRange (srcDoc: Doc) (pos: Position) : option<Range> =
     match Cst.elementAtPos pos (Doc.cst srcDoc) with
     | None -> None

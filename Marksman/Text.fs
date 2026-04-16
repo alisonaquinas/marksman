@@ -1,3 +1,4 @@
+/// Text-buffer abstraction: the <c>Text</c> type, line/offset mapping, and LSP <c>TextDocumentContentChangeEvent</c> application.
 module Marksman.Text
 
 open System
@@ -7,9 +8,12 @@ open Ionide.LanguageServerProtocol.Types
 
 open Misc
 
+/// A half-open byte-offset interval <c>[start, end)</c> within a string.
 type LineRange = int * int
+/// A half-open character-offset interval <c>[start, end)</c> within a string.
 type CharRange = int * int
 
+/// Mapping from line indices to their byte-offset ranges, used to convert between LSP positions and string offsets.
 type LineMap =
     | LineMap of array<LineRange>
 
@@ -69,6 +73,7 @@ type LineMap =
         | _, None -> failwith $"Range end outside of line map: {range}"
 
 
+/// Immutable document buffer: raw string content paired with a pre-computed <c>LineMap</c> for fast position lookups.
 [<CustomEquality; CustomComparison>]
 type Text = {
     content: string
@@ -168,6 +173,7 @@ type internal TrackingTextReader(baseReader: TextReader) =
 
     override this.Peek() : int = baseReader.Peek()
 
+/// Build a <c>LineMap</c> by scanning <c>str</c> line by line, recording each line's byte-offset range.
 let mkLineMap (str: string) : LineMap =
     use reader = new TrackingTextReader(new StringReader(str))
 
@@ -192,8 +198,10 @@ let mkLineMap (str: string) : LineMap =
 
     LineMap(lineMap.ToArray())
 
+/// A zero-length range at the very beginning of a document.
 let documentBeginning = Range.Mk(0, 0, 0, 0)
 
+/// Construct a <c>Text</c> value from a raw string, building its <c>LineMap</c> eagerly.
 let mkText (content: string) : Text =
     let lineMap = mkLineMap content
     { content = content; lineMap = lineMap }
@@ -220,9 +228,11 @@ let private applyChangeOne (text: Text) (change: TextDocumentContentChangeEvent)
         mkText newContent
     | None -> mkText change.Text
 
+/// Apply a sequence of LSP <c>TextDocumentContentChangeEvent</c>s to a <c>Text</c>, returning the updated buffer.
 let applyTextChange (changeEvents: array<TextDocumentContentChangeEvent>) (text: Text) : Text =
     Array.fold applyChangeOne text changeEvents
 
+/// A contiguous slice of a <c>Text</c> buffer identified by inclusive <c>start</c> and exclusive <c>end_</c> offsets.
 type Span = {
     text: Text
     /// Inclusive
@@ -244,6 +254,7 @@ type Span = {
 
         $"start={this.start}; end={this.end_}; substr={substr}"
 
+/// A position within a <c>Span</c>, enabling character-by-character navigation forward and backward.
 type Cursor = {
     span: Span
     pos: int
@@ -363,6 +374,7 @@ module Span =
 
     let startChar = startCursor >> (Option.map Cursor.char)
 
+/// A single line within a <c>Text</c> buffer, identified by its zero-based line number.
 type Line = {
     text: Text
     line: int

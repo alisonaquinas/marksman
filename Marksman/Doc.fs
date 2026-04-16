@@ -1,3 +1,5 @@
+/// Represents a single parsed Markdown file: its identity, version, raw text,
+/// Structure, and Index; provides construction, update, and query functions.
 module Marksman.Doc
 
 open System
@@ -15,6 +17,8 @@ open Marksman.Structure
 
 open Marksman.Cst
 
+/// A parsed Markdown document identified by a DocId and carrying its raw text,
+/// parsed Structure, and pre-built Index.
 [<CustomEquality; CustomComparison>]
 type Doc = {
     id: DocId
@@ -56,6 +60,7 @@ type Doc = {
             | :? Doc as other -> (this :> IComparable<_>).CompareTo(other)
             | _ -> failwith $"Comparison with non-Doc type: {obj}"
 
+/// Raised when a document cannot be parsed or loaded.
 exception DocumentError of doc: RootedRelPath * cause: exn with
     override this.Message =
         $"Error while processing {RootedRelPath.filename this.doc}{Environment.NewLine}{this.cause.Message}"
@@ -66,6 +71,7 @@ module Doc =
 
     let logger = LogProvider.getLoggerByName "Doc"
 
+    /// Construct a Doc by parsing text with the given settings; raises DocumentError on failure.
     let mk parserSettings id version text =
         try
             let structure = Parser.parse parserSettings text
@@ -84,6 +90,7 @@ module Doc =
     let id { id = id } = id
     let text doc = doc.text
 
+    /// Return a new Doc with the text replaced and structure/index re-derived.
     let withText config newText doc =
         let newStructure = Parser.parse config newText
         let newIndex = Index.ofCst (Structure.concreteElements newStructure)
@@ -96,6 +103,7 @@ module Doc =
         }
 
 
+    /// Apply an LSP incremental text-change notification and return the updated Doc.
     let applyLspChange parserSettings (change: DidChangeTextDocumentParams) (doc: Doc) : Doc =
         let newVersion = change.TextDocument.Version
 
@@ -110,6 +118,7 @@ module Doc =
 
         { withText parserSettings newText doc with version = Some newVersion }
 
+    /// Create a Doc from an LSP TextDocumentItem (already open in the editor).
     let fromLsp parserSettings (folderId: FolderId) (item: TextDocumentItem) : Doc =
         let path = LocalPath.ofUri item.Uri
         let id = DocId(UriWith.mkRooted folderId path)
@@ -117,6 +126,7 @@ module Doc =
 
         mk parserSettings id (Some item.Version) text
 
+    /// Load a Doc from disk; returns None if the file does not exist.
     let tryLoad parserSettings (folderId: FolderId) (path: LocalPath) : option<Doc> =
         try
             let content =
@@ -147,6 +157,7 @@ module Doc =
 
     let ast (doc: Doc) : Ast.Ast = doc.structure.Ast
 
+    /// Human-readable name: the heading title if present, otherwise the filename stem.
     let name (doc: Doc) : string =
         match title doc with
         | Some { data = hd } -> Heading.name hd
@@ -156,6 +167,8 @@ module Doc =
 
     let version (doc: Doc) : option<int> = doc.version
 
+    /// All symbols in the document, including synthesised CrossDoc refs for
+    /// every CrossSection ref so that the Conn dependency graph stays consistent.
     let syms (doc: Doc) : seq<Sym> =
         seq {
             for s in doc.structure.Symbols do
@@ -170,5 +183,6 @@ module Doc =
                 yield s
         }
 
+    /// Compute the added/removed symbol difference between two versions of the same document.
     let symsDifference (beforeDoc: Doc) (afterDoc: Doc) : Difference<Sym> =
         Difference.mk (syms beforeDoc) (syms afterDoc)

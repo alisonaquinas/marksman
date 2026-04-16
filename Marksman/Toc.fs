@@ -1,3 +1,4 @@
+/// Table of Contents generation: builds, renders, detects existing TOC blocks, and computes insertion points.
 module Marksman.Toc
 
 open Ionide.LanguageServerProtocol.Types
@@ -21,6 +22,7 @@ let EmptyLine = ""
 type Title = string
 type EntryLevel = int
 
+/// A single TOC entry: heading level, display title, and the slug used as the anchor link.
 type Entry = { level: EntryLevel; title: Title; link: Slug }
 
 module Entry =
@@ -39,17 +41,20 @@ module Entry =
         let slug = Heading.slug heading
         { level = heading.level; link = slug; title = heading.title.text }
 
+/// Where the rendered TOC block should be placed or replaced in the document.
 type InsertionPoint =
     | After of Range
     | Replacing of Range
     | DocumentBeginning
 
+/// An ordered list of TOC entries derived from the document's headings.
 type TableOfContents = { entries: array<Entry> }
 
 module TableOfContents =
 
     let logger = LogProvider.getLoggerByName "TocAgent"
 
+    /// Builds a TOC from the headings in `index`, filtering to `includeLevels`; returns None if the document has no headings.
     let mk (includeLevels: array<int>) (index: Marksman.Index.Index) : option<TableOfContents> =
         let headings =
             index.headings
@@ -61,6 +66,7 @@ module TableOfContents =
         else
             Some { entries = Array.map Entry.fromHeading headings }
 
+    /// Determines where in the document a new TOC block should be inserted.
     let insertionPoint (doc: Doc) : InsertionPoint =
         let index = Doc.index doc
 
@@ -73,6 +79,7 @@ module TableOfContents =
             | Some yml -> After yml.range
 
 
+    /// Renders the TOC to a Markdown string wrapped in start/end marker comments.
     let render (toc: TableOfContents) =
         let offset =
             if Array.isEmpty toc.entries then
@@ -93,6 +100,7 @@ module TableOfContents =
         | Collecting of Range
         | Collected of Range
 
+    /// Scans `text` for an existing TOC block delimited by start/end markers and returns its range.
     let detect (text: Text) : Range option =
         let lines = text.lineMap
         let maxIndex = lines.NumLines

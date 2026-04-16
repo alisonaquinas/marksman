@@ -1,3 +1,4 @@
+/// Core symbol type hierarchy used throughout Marksman for reference resolution and navigation.
 module Marksman.Syms
 
 open Marksman.Misc
@@ -5,9 +6,12 @@ open Marksman.Names
 open Marksman.Paths
 
 
+/// A reference that targets a destination within the same document.
 [<StructuredFormatDisplay("{AsString}")>]
 type IntraRef =
+    /// Reference to a heading section within the same document, identified by its slug.
     | IntraSection of section: Slug
+    /// Reference to a link definition within the same document, identified by its label.
     | IntraLinkDef of LinkLabel
 
     override this.ToString() =
@@ -17,9 +21,12 @@ type IntraRef =
 
     member this.AsString = this.ToString()
 
+/// A reference that targets a destination in a different document.
 [<StructuredFormatDisplay("{AsString}")>]
 type CrossRef =
+    /// Reference to another document, identified by its name or path string.
     | CrossDoc of doc: string
+    /// Reference to a heading section in another document.
     | CrossSection of doc: string * section: Slug
 
     override this.ToString() =
@@ -34,9 +41,12 @@ type CrossRef =
         | CrossDoc doc
         | CrossSection(doc, _) -> doc
 
+/// A link reference — either within the same document or across documents.
 [<StructuredFormatDisplay("{AsString}")>]
 type Ref =
+    /// A same-document reference.
     | IntraRef of IntraRef
+    /// A cross-document reference.
     | CrossRef of CrossRef
 
     override this.ToString() =
@@ -63,6 +73,7 @@ module Ref =
         | IntraRef(IntraSection section) -> Some section
         | _ -> None
 
+/// A Zettelkasten-style tag, e.g. <c>#mytag</c>.
 [<Struct>]
 [<StructuredFormatDisplay("{AsString}")>]
 type Tag =
@@ -77,11 +88,16 @@ type Tag =
 
     override this.ToString() = $"#{this.Name}"
 
+/// A symbol definition — something that can be targeted by a reference.
 [<StructuredFormatDisplay("{AsString}")>]
 type Def =
+    /// The document itself as an implicit definition target.
     | Doc
+    /// The document's title heading (level-1 heading treated as title).
     | Title of string
+    /// A non-title heading, identified by its level and slug id.
     | Header of level: int * id: string
+    /// A Markdown link definition (<c>[label]: url</c>).
     | LinkDef of LinkLabel
 
     override this.ToString() =
@@ -127,11 +143,15 @@ module Def =
         | Header(level, id) -> Some(level, id)
         | _ -> None
 
+/// Top-level symbol discriminated union: every named entity in a document is either a definition, a reference, or a tag.
 [<RequireQualifiedAccess>]
 [<StructuredFormatDisplay("{AsString}")>]
 type Sym =
+    /// A definition that other symbols can point to.
     | Def of Def
+    /// A reference that points to a definition.
     | Ref of Ref
+    /// A Zettelkasten tag.
     | Tag of Tag
 
     override this.ToString() =
@@ -142,10 +162,13 @@ type Sym =
 
     member this.AsString = this.ToString()
 
+/// The visibility scope of a symbol: either confined to a single document or visible workspace-wide.
 [<RequireQualifiedAccess>]
 [<StructuredFormatDisplay("{CompactFormat}")>]
 type Scope =
+    /// Symbol belongs to a specific document.
     | Doc of DocId
+    /// Symbol is visible across the entire workspace.
     | Global
 
     override this.ToString() =
@@ -161,6 +184,7 @@ module Scope =
         | Scope.Doc id -> Some id
         | Scope.Global -> None
 
+/// A symbol paired with the scope it belongs to.
 type ScopedSym = Scope * Sym
 
 module ScopedSym =

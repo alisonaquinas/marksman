@@ -1,3 +1,4 @@
+/// TOML-based configuration for the Marksman LSP server, including completion, code-action, and text-sync knobs.
 module Marksman.Config
 
 open FSharpPlus
@@ -6,9 +7,13 @@ open System.IO
 open Tomlyn
 open Tomlyn.Model
 
+/// Error produced when a TOML config value cannot be found or coerced to the expected type.
 type LookupError =
+    /// The requested key path was not present in the TOML table.
     | NotFound of path: list<string>
+    /// The key exists but its value cannot be coerced to the expected type.
     | WrongType of path: list<string> * value: obj * expectedType: System.Type
+    /// The key exists and has the right type, but its value is semantically invalid.
     | WrongValue of path: list<string> * value: obj * err: string
 
 type LookupResult<'R> = Result<'R, LookupError>
@@ -121,8 +126,11 @@ module ComplWikiStyle =
 
     let ofStringOpt input = Option.ofResult (ofString input)
 
+/// How the LSP client synchronises document text with the server.
 type TextSync =
+    /// Client always sends the full document text on change.
     | Full
+    /// Client sends incremental edits on change.
     | Incremental
 
 module TextSync =
@@ -310,6 +318,7 @@ let private configOfTable (table: TomlTable) : LookupResult<Config> =
 module Config =
     let logger = LogProvider.getLoggerByName "Config"
 
+    /// Merge two configs, with <c>hi</c> taking priority over <c>low</c> for each field.
     let merge hi low = {
         caTocEnable = hi.caTocEnable |> Option.orElse low.caTocEnable
         caTocInclude = hi.caTocInclude |> Option.orElse low.caTocInclude
@@ -332,6 +341,7 @@ module Config =
         complCandidates = hi.complCandidates |> Option.orElse low.complCandidates
     }
 
+    /// Merge two optional configs; <c>None</c> values are treated as absent (not overriding).
     let mergeOpt hi low =
         match low with
         | None -> hi
@@ -340,6 +350,7 @@ module Config =
             | None -> Some low
             | Some hi -> Some(merge hi low)
 
+    /// Attempt to parse a TOML string into a <c>Config</c>; returns <c>None</c> on parse or validation failure.
     let tryParse (content: string) =
         let mutable table, diag = null, null
         let ok = Toml.TryToModel(content, &table, &diag)
@@ -360,6 +371,7 @@ module Config =
             logger.trace (Log.setMessage "Parsing as TOML failed")
             None
 
+    /// Read and parse a TOML config file; returns <c>None</c> if the file is missing or unparseable.
     let read (filepath: string) =
         try
             let content = using (new StreamReader(filepath)) (fun f -> f.ReadToEnd())
@@ -369,19 +381,24 @@ module Config =
 
     let private marksman = "marksman"
 
+    /// Path to the per-user Marksman config directory (OS application-data folder / marksman).
     let userConfigDir =
         Path.Join(
             System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
             marksman
         )
 
+    /// Path to the per-user config file (<c>userConfigDir/config.toml</c>).
     let userConfigFile = Path.Join(userConfigDir, "config.toml")
 
+    /// Return the config, falling back to <c>Config.Default</c> when <c>None</c>.
     let orDefault configOpt = Option.defaultValue Config.Default configOpt
 
+/// The default Markdown file extensions derived from <c>Config.Default</c>.
 let defaultMarkdownExtensions =
     Config.Default.CoreMarkdownFileExtensions() |> Seq.ofArray
 
+/// Parser-relevant settings extracted from <c>Config</c> for use during document parsing.
 type ParserSettings = {
     mdFileExt: string[]
     titleFromHeading: bool

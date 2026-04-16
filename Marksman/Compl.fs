@@ -1,4 +1,5 @@
-﻿module Marksman.Compl
+﻿/// Completion item generation for wiki-links, inline links, reference links, and tags.
+module Marksman.Compl
 
 open System
 open FSharpPlus.GenericBuilders
@@ -18,6 +19,7 @@ open Marksman.Folder
 
 let private logger = LogProvider.getLoggerByName "Compl"
 
+/// An incompletely-typed link or tag opening detected in the raw text that has no matching CST element yet.
 [<RequireQualifiedAccess>]
 type PartialElement =
     | WikiLink of dest: option<WikiEncodedNode> * heading: option<WikiEncodedNode> * range: Range
@@ -254,6 +256,7 @@ module PartialElement =
     let inText (text: Text) (pos: Position) : option<PartialElement> =
         Line.ofPos text pos |> Option.bind (fun l -> inLine l pos)
 
+/// Either a fully-parsed CST element or a partial element found at the cursor position.
 type Completable =
     | E of Element
     | PE of PartialElement
@@ -264,6 +267,7 @@ module Completable =
         | E _ -> false
         | PE _ -> true
 
+/// Describes the kind of completion the user is requesting and the typed input so far.
 type Prompt =
     | WikiDoc of input: string
     | WikiHeadingInSrcDoc of input: string
@@ -747,6 +751,7 @@ module Candidates =
 
         matchingTags
 
+/// Finds the completable element (full or partial) at `pos` in `doc`, if any.
 let findCompletableAtPos (doc: Doc) (pos: Position) : option<Completable> =
     let link () = Doc.index doc |> Index.linkAtPos pos |> Option.map E
 
@@ -773,6 +778,7 @@ let findCompletableAtPos (doc: Doc) (pos: Position) : option<Completable> =
         | None -> tag ()
 
 
+/// Returns the completion items appropriate for `compl` at `pos` given the folder's configuration.
 let findCandidatesForCompl
     (folder: Folder)
     (srcDoc: Doc)
@@ -835,6 +841,7 @@ let findCandidatesForCompl
         let cand = Candidates.findTagCandidates folder srcDoc input
         cand |> Seq.choose (Completions.tag pos compl input)
 
+/// Top-level entry point: finds the completable at `pos` and returns matching completion items.
 let findCandidatesInDoc (folder: Folder) (doc: Doc) (pos: Position) : seq<CompletionItem> =
     match findCompletableAtPos doc pos with
     | None ->

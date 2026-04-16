@@ -1,9 +1,12 @@
+/// Typed string wrappers for URL-encoded and wiki-encoded names, plus identifier types for
+/// folders, documents, and internal cross-document references.
 module Marksman.Names
 
 open System
 open Marksman.Misc
 open Marksman.Paths
 
+/// A string value that has been URL-percent-encoded.
 type UrlEncoded = UrlEncoded of string
 
 module UrlEncoded =
@@ -13,6 +16,7 @@ module UrlEncoded =
     let decode (UrlEncoded str) = str.UrlDecode()
     let raw (UrlEncoded str) = str
 
+/// A string value encoded in wiki-link form (spaces replaced with URL-safe characters).
 type WikiEncoded = WikiEncoded of string
 
 module WikiEncoded =
@@ -22,11 +26,16 @@ module WikiEncoded =
     let raw (WikiEncoded raw) = raw
     let encodeAsString (str: string) : string = encode str |> raw
 
+/// Uniquely identifies a workspace root folder by its URI paired with a typed <c>RootPath</c>.
 type FolderId = UriWith<RootPath>
 
 module FolderId =
     let ofUri uri = UriWith.mkRoot uri
 
+/// Uniquely identifies a document within a workspace root.
+///
+/// Equality and comparison are based solely on the document URI string so that two <c>DocId</c>
+/// values for the same file are always considered equal regardless of how the path was constructed.
 [<Struct>]
 [<StructuredFormatDisplay("{ShortFormat}")>]
 [<CustomEquality; CustomComparison>]
@@ -77,8 +86,15 @@ type DocId =
             | _ -> failwith $"Can't compare DocId with other types: {that}"
 
 
+/// A raw internal-reference name together with the document it was found in.
 type InternName = { src: DocId; name: string }
 
+/// The resolved form of an internal reference path.
+///
+/// <c>ExactAbs</c> – the reference used an absolute-rooted path (leading <c>/</c>).
+/// <c>ExactRel</c> – the reference used a relative path with <c>.</c>/<c>..</c> components,
+///   resolved against the source document's directory.
+/// <c>Approx</c>   – an unanchored name that must be matched by filename anywhere in the workspace.
 type InternPath =
     | ExactAbs of RootedRelPath
     | ExactRel of src: DocId * path: RootedRelPath
@@ -94,6 +110,8 @@ module InternPath =
 module InternName =
     let mkUnchecked src name = { src = src; name = name }
 
+    /// Returns <c>Some</c> only when <paramref name="name"/> looks like a potential internal
+    /// reference for the given file extensions; rejects absolute URIs and other non-internal forms.
     let mkChecked exts src name =
         if isPotentiallyInternalRef exts name then
             Some({ src = src; name = name })
@@ -106,6 +124,9 @@ module InternName =
 
     let src { src = src } = src
 
+    /// Tries to interpret the name string as a file path, classifying it as <c>ExactAbs</c>,
+    /// <c>ExactRel</c>, or <c>Approx</c>. Returns <c>None</c> for absolute URIs and on parse
+    /// errors.
     let tryAsPath ({ src = src; name = name }: InternName) =
         if Uri.IsWellFormedUriString(name, UriKind.Absolute) then
             None

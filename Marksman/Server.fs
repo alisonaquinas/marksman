@@ -1,3 +1,4 @@
+/// LSP server implementation: handles JSON-RPC messages, manages server state, and coordinates background agents.
 module Marksman.Server
 
 open System
@@ -173,8 +174,10 @@ module ServerUtil =
                 ExecuteCommandProvider = Some { commands = Some [||] }
         }
 
+/// Payload for the custom `marksman/status` client notification.
 type MarksmanStatusParams = { state: string; docCount: int }
 
+/// LSP client proxy; sends diagnostics and status notifications to the editor.
 type MarksmanClient(notiSender: ClientNotificationSender, _reqSender: ClientRequestSender) =
     inherit LspClient()
 
@@ -260,6 +263,7 @@ let calcDiagnosticsUpdate
                     yield publishParams
     }
 
+/// Background agent that debounces and publishes diagnostic updates to the client.
 type DiagnosticsManager(client: MarksmanClient) =
     let logger = LogProvider.getLoggerByName "BackgroundAgent"
 
@@ -309,8 +313,10 @@ let queueDiagnosticsUpdate
     =
     manager.UpdateDiagnostics(newState)
 
+/// Messages accepted by the StatusManager agent.
 type StatusMessage = DocCount of int
 
+/// Background agent that sends `marksman/status` notifications when the document count changes.
 type StatusManager(client: MarksmanClient) =
     let logger = LogProvider.getLoggerByName "StatusAgent"
 
@@ -344,8 +350,10 @@ let queueStatusUpdate (manager: StatusManager) (_: Option<State>) (newState: Sta
     let docCount = State.workspace newState |> Workspace.docCount
     manager.UpdateDocCount docCount
 
+/// A named side-effect callback invoked after each state transition.
 type Hook = { name: string; fn: Option<State> -> State -> unit }
 
+/// The result of a state-mutating handler: an LSP response value, an optional new state, and hooks to register.
 type Mutation<'R> = { output: 'R; state: option<State>; hooks: list<Hook> }
 
 module Mutation =
@@ -360,6 +368,7 @@ module Mutation =
 
     let hooks (hooks: list<Hook>) : Mutation<unit> = { output = (); state = None; hooks = hooks }
 
+/// Messages processed by the StateManager mailbox.
 type StateMessage =
     | ReadState of AsyncReplyChannel<State>
     | MutateState of (State -> Option<State> * list<Hook>)
@@ -369,6 +378,7 @@ type StateMessage =
         | ReadState _ -> "ReadState"
         | MutateState _ -> "MutateState"
 
+/// Serialises all state reads and mutations through a single mailbox, running registered hooks after each change.
 type StateManager(initState: State) =
     let logger = LogProvider.getLoggerByName "StateManager"
     let asyncResponseTimeout = 5000
@@ -458,6 +468,7 @@ type StateManager(initState: State) =
     interface IDisposable with
         member _.Dispose() = (agent :> IDisposable).Dispose()
 
+/// The main LSP server; wires together the StateManager, DiagnosticsManager, and StatusManager and implements all LSP request/notification handlers.
 type MarksmanServer(client: MarksmanClient) =
     inherit LspServer()
 

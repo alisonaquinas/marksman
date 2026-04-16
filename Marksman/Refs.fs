@@ -1,4 +1,5 @@
-﻿module Marksman.Refs
+﻿/// Resolves symbolic references (wiki-links, inline links, tags) to their concrete definitions across the workspace.
+module Marksman.Refs
 
 open FSharpPlus.Data
 open FSharpPlus.Operators
@@ -13,6 +14,7 @@ open Marksman.Folder
 open Marksman.Structure
 open Marksman.Syms
 
+/// A CST node carrying an interned (workspace-relative) name.
 type InternNameNode = Cst.Node<InternName>
 
 module InternNameNode =
@@ -28,6 +30,7 @@ module InternNameNode =
         InternName.mkChecked configuredExts src (UrlEncoded.decode data)
         |> Option.map (fun name -> { text = text; range = range; data = name })
 
+/// Describes how a link text corresponds to its target document: by full path, file name, stem, or title slug.
 [<RequireQualifiedAccess>]
 type FileLinkKind =
     | FilePath
@@ -62,6 +65,7 @@ module FileLinkKind =
             | _, _, Some fileKind -> fileKind
             | _, _, None -> FileLinkKind.FileName
 
+/// A resolved link to a document together with the raw link text and how the text matches the target.
 type FileLink = { link: string; kind: FileLinkKind; doc: Doc }
 
 module FileLink =
@@ -98,6 +102,7 @@ module FileLink =
     let filterFuzzyMatchingDocs (folder: Folder) (name: InternName) : seq<Doc> =
         Folder.docs folder |> Seq.filter (isFuzzyMatchDoc name)
 
+/// A link to a document, either explicit (carries link-kind metadata) or implicit (intra-doc reference).
 type DocLink =
     | Explicit of FileLink
     | Implicit of Doc

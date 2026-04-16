@@ -1,3 +1,4 @@
+/// Document and workspace symbol providers: converts headings and tags to LSP SymbolInformation and DocumentSymbol trees.
 module Marksman.Symbols
 
 open Ionide.LanguageServerProtocol.Types
@@ -111,6 +112,7 @@ let rec headingToDocumentSymbol (isEmacs: bool) (cst: Cst) (h: Node<Heading>) : 
         Deprecated = None
     }
 
+/// Returns document symbols for `doc`; uses a hierarchical DocumentSymbol tree when `hierarchy` is true.
 let docSymbols
     (hierarchy: bool)
     (isEmacs: bool)
@@ -137,6 +139,7 @@ let docSymbols
 
         Array.append allHeadings allTags |> First
 
+/// Searches headings and tags across the entire workspace whose names contain `query` as a subsequence.
 let workspaceSymbols (query: string) (ws: Workspace) : array<SymbolInformation> =
     seq {
         for folder in Workspace.folders ws do

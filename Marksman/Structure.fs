@@ -1,3 +1,5 @@
+/// Bridges parser output to the rest of the system by combining a CST, an AST,
+/// and a symbol set with bidirectional element mappings.
 module Marksman.Structure
 
 open FSharpPlus.GenericBuilders
@@ -5,6 +7,9 @@ open FSharpPlus.GenericBuilders
 open Marksman.Syms
 open Marksman.Mapping
 
+/// Parsed shape of a single document: holds the concrete syntax tree, the
+/// abstract syntax tree, the derived symbol set, and bidirectional mappings
+/// between those layers.
 type Structure = private {
     cst: Cst.Cst
     ast: Ast.Ast
@@ -23,6 +28,7 @@ module Structure =
     let concreteElements { cst = cst } = cst.elements
     let symbols { sym = sym } = sym
 
+    /// Try to find the AST element that was derived from a given CST element.
     let tryFindMatchingAbstract (cel: Cst.Element) structure : option<Ast.Element> =
         Mapping.tryImage cel structure.c2a
 
@@ -45,22 +51,28 @@ module Structure =
         else
             cels
 
+    /// Try to find the symbol produced by a given AST element.
     let tryFindSymbolForAbstract (ael: Ast.Element) structure : option<Sym> =
         Mapping.tryImage ael structure.a2s
 
+    /// Try to find the symbol produced by a given CST element (via its AST counterpart).
     let tryFindSymbolForConcrete (cel: Cst.Element) structure : option<Sym> =
         monad' {
             let! ael = tryFindMatchingAbstract cel structure
             return! tryFindSymbolForAbstract ael structure
         }
 
+    /// Return all AST elements that produced a given symbol.
     let findAbstractForSymbol (sym: Sym) structure : Set<Ast.Element> =
         Mapping.tryPreImage sym structure.a2s |> Option.defaultValue Set.empty
 
+    /// Return all CST elements that produced a given symbol.
     let findConcreteForSymbol (sym: Sym) structure : Set<Cst.Element> =
         findAbstractForSymbol sym structure
         |> Set.fold (fun acc ael -> acc + findConcreteForAbstract ael structure) Set.empty
 
+    /// Build a Structure from a CST by constructing the AST, symbol set, and
+    /// element mappings in a single pass.
     let ofCst (parserSettings: Config.ParserSettings) (cst: Cst.Cst) : Structure =
         let rec go cst =
             seq {

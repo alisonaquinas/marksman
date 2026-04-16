@@ -1,4 +1,5 @@
-﻿module Marksman.Cst
+﻿/// Concrete syntax tree (CST): each parsed element is a <c>Node</c> retaining its source text and range alongside typed data.
+module Marksman.Cst
 
 open System
 
@@ -9,6 +10,7 @@ open Marksman.Misc
 open Marksman.Names
 open Marksman.Paths
 
+/// A CST node: the raw source <c>text</c>, LSP <c>range</c>, and typed <c>data</c> extracted from that text.
 type Node<'A> = { text: string; range: Range; data: 'A }
 
 type TextNode = Node<unit>
@@ -32,10 +34,14 @@ module Node =
     let fmtOptUrl (node: option<UrlEncodedNode>) : string = fmtOption fmtUrl node
     let fmtOptWiki (node: option<WikiEncodedNode>) : string = fmtOption fmtWiki node
 
+/// The parsed components of a wiki-link: optional document target and optional heading target, each as a CST node.
 type WikiLink = { doc: option<WikiEncodedNode>; heading: option<WikiEncodedNode> }
 
+/// The intended destination of a wiki-link completion candidate: either a document title or a file path.
 type WikiDest =
+    /// Destination encoded as the document's title string.
     | WTitle of string
+    /// Destination encoded as a workspace-relative file path.
     | WPath of InternPath
 
 module WikiDest =
@@ -88,17 +94,19 @@ module WikiLink =
         | Some docRange, Some headingRange ->
             Some { Start = docRange.Start; End = headingRange.End }
 
+/// A concrete Markdown link in one of its four syntactic forms, with each part as a typed CST node.
 [<RequireQualifiedAccess>]
 type MdLink =
-    // inline
+    /// Inline link: <c>[text](url "title")</c>
     | IL of text: TextNode * url: option<UrlEncodedNode> * title: option<TextNode>
-    // reference full
+    /// Full reference link: <c>[text][label]</c>
     | RF of text: TextNode * label: TextNode
-    // reference collapsed
+    /// Collapsed reference link: <c>[label][]</c>
     | RC of label: TextNode
-    // reference shortcut
+    /// Shortcut reference link: <c>[label]</c>
     | RS of label: TextNode
 
+/// A URL split into its optional path component and optional fragment/anchor component, each as a typed CST node.
 type Url<'T> = {
     url: Option<Node<'T>>
     anchor: Option<Node<'T>>
@@ -199,6 +207,7 @@ module MdLink =
 
         $"[{text}]({path}{anchor})"
 
+/// A concrete Markdown link definition (<c>[label]: url "optional title"</c>), with each part as a CST node.
 type MdLinkDef = { label: TextNode; url: UrlEncodedNode; title: option<TextNode> }
 
 module MdLinkDef =
@@ -230,17 +239,25 @@ module MdLinkDef =
     }
 
 
+/// A concrete Zettelkasten tag, retaining the tag name as a CST node with its source range.
 type Tag = { name: TextNode }
 
 module Tag =
     let fmt (t: Tag) = $"name={t.name.text}; range={t.name.range}"
 
+/// Top-level CST element — every parsed construct in a Markdown document, each wrapped in a <c>Node</c> carrying source text and range.
 type Element =
+    /// A heading node.
     | H of Node<Heading>
+    /// A wiki-link node.
     | WL of Node<WikiLink>
+    /// A Markdown link node.
     | ML of Node<MdLink>
+    /// A Markdown link definition node.
     | MLD of Node<MdLinkDef>
+    /// A tag node.
     | T of Node<Tag>
+    /// A YAML front-matter block, stored as a plain text node.
     | YML of TextNode
 
     member this.Range =
@@ -252,11 +269,14 @@ type Element =
         | T n -> n.range
         | YML n -> n.range
 
+/// A concrete heading, including its nesting level, title text node, optional disambiguation suffix, and scope range.
 and Heading = {
     level: int
     isTitle: bool
     title: TextNode
+    /// Suffix appended to the slug when two headings would otherwise be identical.
     disambiguation: option<string>
+    /// The source range covered by this heading's section (from the heading line to the start of the next same-or-higher-level heading).
     scope: Range
 }
 
@@ -409,6 +429,7 @@ module Element =
         | T { data = tag } -> Ast.Element.T(Ast.Tag tag.name.text) |> Some
         | YML _ -> None
 
+/// The complete CST of a Markdown document: a flat element array and a map from each heading to the elements nested under it.
 type Cst = { elements: Element[]; childMap: Map<Element, Element[]> }
 
 module Cst =

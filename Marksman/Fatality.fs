@@ -1,3 +1,4 @@
+/// Fatal error handling: prints diagnostic information to stderr and terminates the process.
 module Marksman.Fatality
 
 open Ionide.LanguageServerProtocol.Types
@@ -6,6 +7,7 @@ open Marksman.Misc
 open Marksman.State
 open Marksman.Workspace
 
+/// Prints version, OS, workspace statistics, and the exception to stderr, then exits with code 1.
 let abort (stateOpt: Option<State>) (ex: exn) =
     let marksmanVersion = getAssemblyVersion ()
 

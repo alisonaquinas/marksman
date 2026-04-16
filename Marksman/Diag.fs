@@ -1,3 +1,4 @@
+/// Generates LSP diagnostics for broken links, ambiguous links, and non-breaking whitespace in headings.
 module Marksman.Diag
 
 open Ionide.LanguageServerProtocol.Types
@@ -14,6 +15,7 @@ open Marksman.Cst
 open Marksman.Index
 open Marksman.Refs
 
+/// A single diagnostic entry for a document.
 type Entry =
     | AmbiguousLink of Element * Syms.Ref * array<Dest>
     | BrokenLink of Element * Syms.Ref
@@ -185,6 +187,7 @@ let diagToLsp (diag: Entry) : Lsp.Diagnostic =
         Data = None
       }
 
+/// Diagnostics for all documents in a single folder, keyed by document id.
 type FolderDiag = array<DocId * array<Lsp.Diagnostic>>
 
 module FolderDiag =
@@ -196,6 +199,7 @@ module FolderDiag =
             uri, lspDiags)
         |> Array.ofSeq
 
+/// Diagnostics for every folder in the workspace, keyed by folder id.
 type WorkspaceDiag = Map<FolderId, FolderDiag>
 
 module WorkspaceDiag =
