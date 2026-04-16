@@ -6,6 +6,7 @@ open Ionide.LanguageServerProtocol.Types
 open Marksman.Cst
 open Marksman.Index
 
+/// The semantic token categories Marksman reports to the client.
 [<Struct>]
 type TokenType =
     | WikiLink
@@ -27,6 +28,7 @@ module TokenType =
 
     let mapping = [| WikiLink; RefLink; Tag |] |> Array.map toLspName
 
+/// A single semantic token with its source range and type.
 type Token = {
     range: Range
     typ: TokenType
@@ -70,6 +72,7 @@ module Token =
             Modifiers
         |]
 
+    /// Encodes a sequence of tokens into the LSP delta-encoded integer array format.
     let encodeAll (tokens: seq<Token>) : array<uint32> =
         let tokens =
             tokens
@@ -87,6 +90,7 @@ module Token =
 
         encoded.ToArray()
 
+    /// Extracts semantic tokens for wiki-links, reference labels, and tags from an index.
     let ofIndex (index: Index) : seq<Token> =
         seq {
             for link in Index.wikiLinks index do

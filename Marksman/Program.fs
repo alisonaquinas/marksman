@@ -1,4 +1,5 @@
-﻿module Marksman.Program
+﻿/// CLI entry point: parses command-line arguments and launches the LSP server on stdin/stdout.
+module Marksman.Program
 
 open System
 open System.Diagnostics
@@ -12,6 +13,7 @@ module MS = Marksman.Server
 open FSharp.SystemCommandLine
 open Marksman.Misc
 
+/// Configures the Serilog logger to write to stderr at the level matching `verbosity` (0=Error … 4+=Verbose).
 let configureLogging (verbosity: int) : unit =
     let loggerConfig = LoggerConfiguration()
 
@@ -35,6 +37,7 @@ let configureLogging (verbosity: int) : unit =
 
     ()
 
+/// Initialises logging, optionally waits for a debugger, then starts the LSP server loop; returns the exit code.
 let startLSP (args: int * bool) : int =
     let verbosity, waitForDebugger = args
 

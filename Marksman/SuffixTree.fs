@@ -1,5 +1,8 @@
+/// Suffix/subsequence tree used for fuzzy title and heading matching in the workspace.
 module Marksman.SuffixTree
 
+/// Internal trie-based implementation; all keys are stored in reverse so that suffix
+/// queries translate to prefix lookups.
 module Impl =
     type SuffixTree<'K, 'V> when 'K: comparison = {
         nodes: Map<'K, SuffixTree<'K, 'V>>
@@ -70,6 +73,11 @@ module Impl =
         let st = findSubtree key st
         st |> collectValues
 
+/// A suffix tree that maps keys of type <c>'K</c> to values of type <c>'V</c>.
+///
+/// Keys are split into string tokens by a caller-supplied <c>splitFn</c> before insertion.
+/// The tree supports efficient retrieval of all values whose key-tokens end with a given
+/// suffix sequence, enabling fuzzy/partial-word title matching.
 [<CustomEquality; NoComparison>]
 type SuffixTree<'K, 'V> when 'V: equality = private {
     splitFn: 'K -> list<string>
@@ -83,9 +91,12 @@ type SuffixTree<'K, 'V> when 'V: equality = private {
 
     override this.GetHashCode() = this.tree.GetHashCode()
 
+/// Functional API for <see cref="SuffixTree" />.
 module SuffixTree =
+    /// Creates an empty tree with the given key-splitting function.
     let empty splitFn = { splitFn = splitFn; tree = Impl.empty }
 
+    /// Builds a tree from a sequence of key-value pairs using the given splitting function.
     let ofSeq splitFn (data: seq<'K * 'V>) =
         let tree = Seq.map (fun (k, v) -> splitFn k, v) data |> Impl.ofSeq
         { splitFn = splitFn; tree = tree }
@@ -94,4 +105,5 @@ module SuffixTree =
 
     let remove k t = { t with tree = Impl.remove (t.splitFn k) t.tree }
 
+    /// Returns all values whose stored key ends with the token sequence produced by splitting <c>k</c>.
     let filterMatchingValues k t = Impl.filterMatchingValues (t.splitFn k) t.tree

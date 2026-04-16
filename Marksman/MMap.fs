@@ -1,7 +1,13 @@
+/// Multi-valued map (Map<'K, Set<'V>>) and its associated difference type.
 module Marksman.MMap
 
 open Marksman.Misc
 
+/// An immutable map from keys to sets of values, i.e. Map&lt;'K, Set&lt;'V&gt;&gt;.
+///
+/// Each key can be associated with zero or more values. Adding a key-value pair is
+/// idempotent; removing a value shrinks the set and deletes the key entirely when
+/// the set becomes empty.
 type MMap<'K, 'V> when 'K: comparison and 'V: comparison =
     | MMap of Map<'K, Set<'V>>
 
@@ -64,6 +70,8 @@ type MMap<'K, 'V> when 'K: comparison and 'V: comparison =
 
     member this.ToSetSeq = Map.toSeq this.Inner
 
+/// Describes the structural difference between two <see cref="MMap" /> values:
+/// keys that were added, keys that were removed, and keys whose value-sets changed.
 type MMapDifference<'K, 'V> when 'K: comparison and 'V: comparison = {
     removedKeys: Set<'K>
     addedKeys: Set<'K>
@@ -100,6 +108,7 @@ type MMapDifference<'K, 'V> when 'K: comparison and 'V: comparison = {
 
         concatLines lines
 
+/// Functional API for <see cref="MMap" />.
 module MMap =
     let add k v (mm: MMap<'K, 'V>) = mm.Add(k, v)
 
@@ -131,6 +140,7 @@ module MMap =
 
     let toSetSeq (mm: MMap<'K, 'V>) = mm.ToSetSeq
 
+    /// Computes the <see cref="MMapDifference" /> between two MMaps.
     let difference (MMap m1) (MMap m2) =
         let ks1 = Map.keys m1 |> Set.ofSeq
         let ks2 = Map.keys m2 |> Set.ofSeq

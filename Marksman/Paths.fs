@@ -1,3 +1,5 @@
+/// Path abstraction layer providing typed wrappers for absolute, relative, rooted, and URI-based
+/// file-system paths, along with conversion utilities between system paths and LSP document URIs.
 module Marksman.Paths
 
 open System
@@ -10,6 +12,8 @@ open Marksman.Misc
 open Ionide.LanguageServerProtocol.Types
 
 // https://github.dev/fsharp/FsAutoComplete/blob/d90597c2e073b7e88390f2b1933b031ff8a9a009/src/FsAutoComplete.Core/Utils.fs#L635
+/// Converts a system file path to a <c>file://</c> URI string, percent-encoding special characters
+/// and normalising Windows backslashes to forward slashes.
 let systemPathToUriString (filePath: string) : string =
     let uri = StringBuilder(filePath.Length)
 
@@ -42,6 +46,8 @@ let systemPathToUriString (filePath: string) : string =
     else
         "file:///" + uri.ToString().TrimStart('/')
 
+/// Converts a <c>file://</c> URI to a local system path, normalising the Windows drive letter to
+/// lower-case.
 let uriToSystemPath (uri: DocumentUri) : string =
     let unescaped = Uri.UnescapeDataString(uri)
     let uri = Uri(unescaped)
@@ -60,14 +66,17 @@ let uriToSystemPath (uri: DocumentUri) : string =
 
     localPath
 
+/// Splits a path string on both forward and backward slashes, discarding empty segments.
 let pathComponents (path: string) =
     let components = path.Split([| '\\'; '/' |])
     Array.filter (String.IsNullOrEmpty >> not) components
 
+/// Host operating-system platform discriminator.
 type Platform =
     | Unix
     | Win
 
+/// Directory separator style.
 type DirSeparator =
     | Forward
     | Backward
@@ -89,6 +98,7 @@ module DirSeparator =
         else
             Forward
 
+/// An absolute file-system path (starts with a drive letter on Windows or <c>/</c> on Unix).
 [<Struct>]
 type AbsPath =
     | AbsPath of string
@@ -97,6 +107,7 @@ type AbsPath =
         let (AbsPath raw) = this
         AbsPath(Path.GetDirectoryName(raw))
 
+/// A relative file-system path (no leading root component).
 and [<Struct>] RelPath =
     | RelPath of string
 
@@ -104,6 +115,7 @@ and [<Struct>] RelPath =
         let (RelPath raw) = this
         AbsPath(Path.GetDirectoryName(raw))
 
+/// A file-system path that is either absolute or relative.
 and LocalPath =
     | Abs of AbsPath
     | Rel of RelPath
@@ -114,14 +126,18 @@ and LocalPath =
         | Rel(RelPath str) -> str
 
 module AbsPath =
+    /// Returns <c>Some</c> if <paramref name="str"/> looks like a Windows absolute path (e.g. <c>c:\…</c>).
     let isRawWinAbsPath str = String.length str >= 2 && Char.IsLetter(str[0]) && str[1] = ':'
 
+    /// Returns <c>Some</c> if <paramref name="str"/> looks like a Unix absolute path (starts with <c>/</c>).
     let isRawUnixAbsPath str = String.length str > 0 && str[0] = '/'
 
+    /// Returns true if <paramref name="str"/> is a filesystem root component (<c>/</c> or a Windows drive root such as <c>c:</c>).
     let isRootComponent str =
         str = "/"
         || (String.length str = 2 && Char.IsLetter(str[0]) && str[1] = ':')
 
+    /// Tries to parse a raw string as an absolute path; returns <c>None</c> if it is not absolute.
     let tryOfSystem str =
         if isRawWinAbsPath str then
             // TODO: normalize the drive letter? Leave as-is for now until the requirements are
@@ -132,22 +148,28 @@ module AbsPath =
         else
             None
 
+    /// Parses a raw string as an absolute path; throws if the string is not absolute.
     let ofSystem str =
         tryOfSystem str
         |> Option.defaultWith (fun () -> failwith $"Bad absolute path: {str}")
 
+    /// Extracts the absolute path from a <c>file://</c> URI.
     let ofUri (rawUri: DocumentUri) : AbsPath = ofSystem (uriToSystemPath rawUri)
 
     let toSystem (AbsPath raw) = raw
 
     let toUri path = systemPathToUriString (toSystem path)
 
+    /// Appends a bare filename (no directory component) to an absolute path.
     let appendFile (AbsPath raw) (filename: string) = AbsPath(Path.Combine(raw, filename))
 
+    /// Appends a relative path to an absolute path.
     let append (AbsPath abs) (RelPath rel) = AbsPath(Path.Combine(abs, rel))
 
+    /// Resolves <c>.</c> and <c>..</c> components via <c>Path.GetFullPath</c>.
     let resolve (AbsPath raw) = Path.GetFullPath(raw) |> AbsPath
 
+    /// Returns true if <paramref name="inner"/> starts with <paramref name="outer"/> (i.e. is a descendant).
     let contains (AbsPath outer) (AbsPath inner) = inner.StartsWith(outer)
 
     let filename (AbsPath sys) = Path.GetFileName(sys)
@@ -165,6 +187,7 @@ module RelPath =
 
 
 module LocalPath =
+    /// Tries to parse a string as an absolute or relative path; returns <c>None</c> for null/empty input.
     let tryOfSystem str =
         if String.IsNullOrEmpty str then
             None
@@ -173,6 +196,7 @@ module LocalPath =
             | Some path -> Some(Abs path)
             | None -> Some(Rel(RelPath.ofStringUnchecked str))
 
+    /// Parses a string as an absolute or relative path; throws on null/empty input.
     let ofSystem str =
         tryOfSystem str
         |> Option.defaultWith (fun () -> failwith $"String {str} couldn't be converted to a path")
@@ -184,6 +208,7 @@ module LocalPath =
         | Abs _ -> true
         | Rel _ -> false
 
+    /// Unwraps to <c>AbsPath</c>; throws if the path is relative.
     let asAbsolute =
         function
         | Abs path -> path
@@ -196,8 +221,10 @@ module LocalPath =
 
     let components path = toSystem path |> pathComponents
 
+    /// Returns true if any path component is <c>.</c> or <c>..</c>.
     let hasDotComponents path = components path |> Array.exists (fun x -> x = "." || x = "..")
 
+    /// Reconstructs a <c>LocalPath</c> from an array of path component strings.
     let ofComponents comps =
         assert (Array.length comps > 0)
 
@@ -210,6 +237,7 @@ module LocalPath =
         ofSystem sysPath
 
     // TODO: this is pretty ridiculous. Think of a better way.
+    /// Returns the directory separator character (<c>/</c> or <c>\</c>) that appears most often in the path.
     let dominatingDirectorySeparator path =
         let raw = toSystem path
 
@@ -226,6 +254,8 @@ module LocalPath =
 
     let startsWithString (str: string) path = (toSystem path).StartsWith(str)
 
+    /// Resolves <c>.</c> and <c>..</c> components without hitting the filesystem, preserving the
+    /// original separator style.
     let normalize path =
         let comps = components path |> Array.toList
         let isAbs = isAbsolute path
@@ -261,6 +291,8 @@ module LocalPath =
         | Abs _ -> Abs(AbsPath extended)
         | Rel _ -> Rel(RelPath extended)
 
+    /// Combines two paths: if <paramref name="p2"/> is absolute it replaces <paramref name="p1"/>;
+    /// otherwise the two paths are joined and the result kind follows <paramref name="p1"/>.
     let combine p1 p2 =
         match p1, p2 with
         | _, Abs _ -> p2
@@ -281,6 +313,7 @@ module LocalPath =
         let dir = Path.GetDirectoryName(toSystem path)
         ofSystem dir
 
+/// The absolute path of a workspace root folder.
 [<Struct>]
 type RootPath =
     | RootPath of AbsPath
@@ -299,6 +332,8 @@ module RootPath =
     let append (RootPath p) relPath = AbsPath.append p relPath
     let appendFile (RootPath p) filename = AbsPath.appendFile p filename
 
+    /// Returns true if <paramref name="path"/> is relative (always within a root) or if its
+    /// resolved absolute form starts with the resolved root path.
     let contains (RootPath enclosing) (path: LocalPath) =
         match path with
         | Rel _ -> true
@@ -310,10 +345,14 @@ module RootPath =
     let filename (RootPath p) = AbsPath.filename p
     let filenameStem (RootPath p) = AbsPath.filenameStem p
 
+/// A path within a workspace root: a <c>RootPath</c> plus an optional relative path from that
+/// root. When <c>path</c> is <c>None</c> the record refers to the root itself.
 [<Struct>]
 type RootedRelPath = { root: RootPath; path: option<RelPath> }
 
 module RootedRelPath =
+    /// Constructs a <c>RootedRelPath</c> from a root and a <c>LocalPath</c>, computing the
+    /// relative portion for absolute paths by calling <c>Path.GetRelativePath</c>.
     let mk root path =
         match path with
         | Rel path -> { root = root; path = Some path }
@@ -345,6 +384,8 @@ module RootedRelPath =
 
         rooted.path |> Option.map mkDir
 
+    /// Combines a rooted path with another local path, returning <c>None</c> if the result
+    /// escapes the root or resolves to a relative path.
     let combine (root: RootedRelPath) (path: LocalPath) : option<RootedRelPath> =
         match LocalPath.combine (toLocal root) path with
         | Rel _ -> None
@@ -357,20 +398,28 @@ module RootedRelPath =
     let rootPath { root = root } = root
     let relPathForced { path = path } = path |> Option.defaultValue (RelPath ".")
 
+/// Pairs an LSP <c>DocumentUri</c> with a typed, pre-parsed path value so that callers can use
+/// either the raw URI string or the structured path without re-parsing.
 type UriWith<'T> = { uri: DocumentUri; data: 'T }
 
 module UriWith =
     let mkAbs uri = { uri = uri; data = AbsPath.ofUri uri }
     let mkRoot uri = { uri = uri; data = AbsPath.ofUri uri |> RootPath }
 
+    /// Builds a <c>UriWith&lt;RootedRelPath&gt;</c> from a rooted-URI root and a local path,
+    /// re-deriving the URI from the resulting rooted relative path.
     let mkRooted root path =
         let relPath = RootedRelPath.mk root.data path
         { uri = RootedRelPath.toUri relPath; data = relPath }
 
+    /// Converts a <c>UriWith&lt;RootedRelPath&gt;</c> to a <c>UriWith&lt;AbsPath&gt;</c>,
+    /// keeping the original URI string.
     let rootedRelToAbs uri =
         let localPath = RootedRelPath.toAbs uri.data
         { uri = uri.uri; data = localPath }
 
+/// A canonical document path: the relative path to a Markdown document with its extension
+/// stripped, used as a stable key for cross-document references.
 type CanonDocPath = private CanonDocPath of string
 
 module CanonDocPath =

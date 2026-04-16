@@ -1,3 +1,5 @@
+/// Miscellaneous utilities: string extensions, slug/link-label normalization, path helpers,
+/// LSP Position/Range extensions, and general-purpose difference types.
 module Marksman.Misc
 
 open System
@@ -9,18 +11,21 @@ open System.Text.RegularExpressions
 
 open Ionide.LanguageServerProtocol.Types
 
+/// Flips the first two arguments of a two-argument function.
 let flip (f: 'A -> 'B -> 'C) : 'B -> 'A -> 'C = fun b a -> f a b
 
 let lineEndings = [| "\r\n"; "\n" |]
 
 let concatLines (lines: seq<string>) : string = String.concat Environment.NewLine lines
 
+/// Builds a glob pattern that matches files with any of the configured Markdown extensions.
 let mkWatchGlob (configuredExts: seq<string>) : string =
     let ext_pattern = "{" + (String.concat "," configuredExts) + "}"
     $"**/*.{ext_pattern}"
 
 let isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
 
+/// Extension methods on <see cref="System.String" /> used throughout Marksman.
 type String with
 
     member this.Lines() : array<string> = this.Split(lineEndings, StringSplitOptions.None)
@@ -134,6 +139,7 @@ let isEmacsBackup (path: string) =
     with :? ArgumentException ->
         false
 
+/// Returns true if the path has one of the configured Markdown extensions and is not an Emacs backup file.
 let isMarkdownFile (configuredExts: seq<string>) (path: string) : bool =
     if isEmacsBackup path then
         false
@@ -147,12 +153,14 @@ let isMarkdownFile (configuredExts: seq<string>) (path: string) : bool =
             let ext = ext.TrimStart('.').ToLowerInvariant()
             Seq.contains ext configuredExts
 
+/// Removes the Markdown file extension from a path, returning the path unchanged if it is not a Markdown file.
 let chopMarkdownExt (configuredExts: seq<string>) (path: string) : string =
     if isMarkdownFile configuredExts path then
         path.TrimSuffix(Path.GetExtension path)
     else
         path
 
+/// Appends the first configured Markdown extension to a path that does not already have one.
 let ensureMarkdownExt (configuredExts: seq<string>) (path: string) : string =
     if isMarkdownFile configuredExts path then
         path
@@ -160,6 +168,7 @@ let ensureMarkdownExt (configuredExts: seq<string>) (path: string) : string =
         let ext = Seq.head configuredExts
         $"{path}.{ext}"
 
+/// Returns true for paths with a known Markdown extension or no extension at all.
 let isPotentiallyMarkdownFile (configuredExts: seq<string>) (path: string) : bool =
     let ext = Path.GetExtension path
 
@@ -168,6 +177,8 @@ let isPotentiallyMarkdownFile (configuredExts: seq<string>) (path: string) : boo
     | "" -> true
     | _ -> isMarkdownFile configuredExts path
 
+/// Returns true if the name could be an internal (intra-workspace) document reference,
+/// i.e. it is not an absolute URI and looks like a Markdown file path.
 let isPotentiallyInternalRef (configuredExts: seq<string>) (name: string) : bool =
     if Uri.IsWellFormedUriString(name, UriKind.Absolute) then
         false
@@ -179,6 +190,8 @@ let fmtOption fmt value =
     | Some value -> $"{fmt value}"
     | None -> "∅"
 
+/// A normalized, lowercase, hyphen-separated representation of a string used for
+/// case-insensitive heading and document title matching.
 type Slug =
     | Slug of string
 
@@ -186,6 +199,7 @@ type Slug =
         let (Slug str) = this
         str
 
+/// Functions for constructing and comparing <see cref="Slug" /> values.
 module Slug =
     let ofString (s: string) = Slug(s.Slug())
 
@@ -207,6 +221,7 @@ module Slug =
 
     let equalStrings (s1: string) (s2: string) = ofString s1 = ofString s2
 
+/// Formats a value and indents every line of the result by two spaces.
 let indentFmt (fmtA: 'A -> string) (a: 'A) =
     let reprA = fmtA a
 
@@ -215,6 +230,7 @@ let indentFmt (fmtA: 'A -> string) (a: 'A) =
     String.Join(Environment.NewLine, indentedLines)
 
 
+/// Convenience constructors and navigation helpers for LSP <c>Position</c>.
 type Position with
 
     static member Mk(line: int, char: int) : Position = { Line = line; Character = char }
@@ -229,6 +245,7 @@ type Position with
         else
             { Line = this.Line; Character = this.Character - n }
 
+/// Convenience constructors and predicate helpers for LSP <c>Range</c>.
 type Range with
 
     static member Mk(startLine: int, startChar: int, endLine: int, endChar: int) : Range = {
@@ -242,6 +259,8 @@ type Range with
 
     member this.ContainsInclusive(pos: Position) : bool = this.Start <= pos && pos <= this.End
 
+/// A normalized reference-link label: Unicode-normalized, lowercased, trimmed, and with
+/// consecutive whitespace collapsed to a single space, matching the CommonMark specification.
 [<Struct>]
 [<StructuredFormatDisplay("{AsString}")>]
 type LinkLabel =
@@ -254,6 +273,7 @@ type LinkLabel =
 
     member this.AsString = this.ToString()
 
+/// Functions for constructing and comparing <see cref="LinkLabel" /> values.
 module LinkLabel =
     let private consecutiveWhitespacePattern = Regex(@"\s+")
 
@@ -264,6 +284,8 @@ module LinkLabel =
 
     let isSubSequenceOf (LinkLabel other) (LinkLabel this) = other.IsSubSequenceOf(this)
 
+/// Wraps a value together with an indentation level; <c>ToString</c> prepends each line
+/// with the specified number of spaces.
 [<StructuredFormatDisplay("{AsString}")>]
 type Indented<'A> =
     | Indented of int * 'A
@@ -281,6 +303,7 @@ type Indented<'A> =
 
     member this.AsString = this.ToString()
 
+/// Records the added and removed elements between two sets.
 type Difference<'A> when 'A: comparison = {
     added: Set<'A>
     removed: Set<'A>
@@ -304,6 +327,7 @@ type Difference<'A> when 'A: comparison = {
 
         concatLines lines
 
+/// Functions for constructing and transforming <see cref="Difference" /> values.
 module Difference =
     let empty = { added = Set.empty; removed = Set.empty }
 
@@ -320,6 +344,8 @@ module Difference =
         removed = Set.map f removed
     }
 
+/// Like <see cref="Difference" /> but also partitions the common elements into changed
+/// and unchanged subsets.
 type FullDifference<'A> when 'A: comparison = {
     added: Set<'A>
     removed: Set<'A>
@@ -327,6 +353,7 @@ type FullDifference<'A> when 'A: comparison = {
     unchanged: Set<'A>
 }
 
+/// Returns the informational version string from the executing assembly's attributes.
 let getAssemblyVersion () : string =
     let assembly = Assembly.GetExecutingAssembly()
 

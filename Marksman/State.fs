@@ -1,4 +1,5 @@
-﻿module Marksman.State
+﻿/// Mutable LSP server state: tracks the active workspace, client description, and revision counter.
+module Marksman.State
 
 open FSharpPlus.GenericBuilders
 
@@ -14,6 +15,7 @@ open Marksman.Folder
 open Marksman.Workspace
 open Marksman.Diag
 
+/// Client-supplied initialization options parsed from the LSP initialize request.
 type InitOptions = { preferredTextSyncKind: Option<TextSync> }
 
 module InitOptions =
@@ -38,6 +40,7 @@ module InitOptions =
 
             { preferredTextSyncKind = kind }
 
+/// Describes the connected LSP client — its identity, capabilities, and initialization options.
 type ClientDescription = {
     info: ClientInfo option
     caps: ClientCapabilities
@@ -112,6 +115,7 @@ module ClientDescription =
 
         { info = par.ClientInfo; caps = caps; opts = opts }
 
+/// The complete server state: client description, loaded workspace, and a monotonic revision counter.
 type State = private {
     client: ClientDescription
     workspace: Workspace

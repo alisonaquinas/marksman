@@ -1,3 +1,6 @@
+/// Incremental cross-document connection graph: tracks which refs resolve to which
+/// defs (resolved edges), which remain broken (unresolved edges), and the
+/// dependency order between cross-doc refs.
 module Marksman.Conn
 
 open Ionide.LanguageServerProtocol.Logging
@@ -9,6 +12,8 @@ open Marksman.Graph
 open Marksman.Syms
 
 
+/// Callbacks that answer two questions needed during ref resolution:
+/// which scopes (documents) a ref could target, and which defs exist within one such scope.
 type Oracle = {
     resolveToScope: Scope -> Ref -> Scope[]
     resolveInScope: Ref -> Scope -> Def[]
@@ -19,6 +24,8 @@ module ScopedSym =
     let asDef (scope, sym) = Sym.asDef sym |> Option.map (fun def -> scope, def)
     let asTag (scope, sym) = Sym.asTag sym |> Option.map (fun tag -> scope, tag)
 
+/// Classifies why a ref is unresolved: the target scope is completely unknown,
+/// or the scope is known but contains no matching def.
 type UnresolvedScope =
     | FullyUnknown
     | InScope of Scope
@@ -34,6 +41,8 @@ type Unresolved =
         | Scope FullyUnknown -> "FullyUnknown"
         | Scope(InScope scope) -> $"{scope}"
 
+/// The delta between two Conn snapshots; used to detect whether an incremental
+/// update produced the same result as a full rebuild (paranoid-mode check).
 type ConnDifference = {
     refsDifference: MMapDifference<Scope, Ref>
     defsDifference: MMapDifference<Scope, Def>
@@ -81,6 +90,8 @@ type ConnDifference = {
 
         concatLines lines
 
+/// Index of all known definitions, stored both by scope and by (scope, slug) pair
+/// to support efficient cross-document resolution by name.
 type Defs = {
     byScope: MMap<Scope, Def>
     bySlug: MMap<ScopeSlug, Scope * Def>
@@ -119,6 +130,9 @@ type Defs = {
         { byScope = byScope; bySlug = bySlug }
 
 
+/// The cross-document connection graph for a folder: refs, defs, tags, resolved
+/// and unresolved edges, cross-ref dependency order, and the set of symbols
+/// touched by the most recent incremental update.
 type Conn = {
     refs: MMap<Scope, Ref>
     defs: Defs
@@ -231,6 +245,8 @@ module Conn =
         lastTouched = Set.empty
     }
 
+    /// True when the two Conn values have identical refs, defs, tags, and resolved/unresolved graphs
+    /// (lastTouched is intentionally excluded).
     let isSameStructure c1 c2 =
         c1.refs = c2.refs
         && c1.defs.byScope = c2.defs.byScope
@@ -487,6 +503,7 @@ module Conn =
             lastTouched = lastTouched
         }
 
+    /// Apply a symbol difference to the Conn, skipping the work entirely when the diff is empty.
     let update oracle diff conn =
         if Difference.isEmpty diff then
             logger.trace (Log.setMessage "update: skipping empty diff")
@@ -494,6 +511,7 @@ module Conn =
         else
             updateAux oracle diff conn
 
+    /// Build a Conn from scratch given the full symbol map of a folder.
     let mk (oracle: Oracle) (symMap: MMap<DocId, Sym>) : Conn =
         // Backtrace can be helpful in tracking down when full rebuilds are requested
         // let trace = System.Diagnostics.StackTrace()
@@ -507,6 +525,7 @@ module Conn =
 
         update oracle { added = added; removed = Set.empty } empty
 
+    /// Compute the element-wise difference between two Conn snapshots.
     let difference c1 c2 : ConnDifference = {
         refsDifference = MMap.difference c1.refs c2.refs
         defsDifference = MMap.difference c1.defs.byScope c2.defs.byScope
@@ -517,6 +536,7 @@ module Conn =
     }
 
 module Query =
+    /// Return all scoped symbols that the given scoped symbol resolves to.
     let resolve (scopedSym: ScopedSym) (conn: Conn) : Set<ScopedSym> =
         conn.resolved.edges
         |> MMap.tryFind scopedSym

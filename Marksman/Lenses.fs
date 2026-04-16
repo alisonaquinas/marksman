@@ -1,3 +1,4 @@
+/// Code lens provider: emits reference-count lenses on headings and link definitions.
 module Marksman.Lenses
 
 open Ionide.LanguageServerProtocol.Types
@@ -11,10 +12,12 @@ open Marksman.Refs
 let findReferencesLens = "marksman.findReferences"
 
 // fsharplint:disable-next-line
+/// Payload embedded in a find-references code lens command for clients that support it.
 type FindReferencesData = { Uri: DocumentUri; Position: Position; Locations: Location[] }
 
 let private humanRefCount cnt = if cnt = 1 then "1 reference" else $"{cnt} references"
 
+/// Builds a CodeLens showing the reference count for `el`, or None if it has no references.
 let buildReferenceLens (client: ClientDescription) (folder: Folder) (doc: Doc) (el: Cst.Element) =
     let refs = Dest.findElementRefs false folder doc el |> Array.ofSeq
     let refCount = Array.length refs
@@ -45,6 +48,7 @@ let buildReferenceLens (client: ClientDescription) (folder: Folder) (doc: Doc) (
     else
         None
 
+/// Returns all reference-count code lenses for headings and link definitions in `doc`.
 let forDoc (client: ClientDescription) (folder: Folder) (doc: Doc) =
     let headingLenses =
         doc.Index.headings

@@ -1,3 +1,5 @@
+/// Per-document lookup index built from CST elements; provides fast access to
+/// headings, links, tags, and YAML front matter by slug, label, or source position.
 module Marksman.Index
 
 open Ionide.LanguageServerProtocol.Types
@@ -8,6 +10,8 @@ open Marksman.Misc
 type Dictionary<'K, 'V> = System.Collections.Generic.Dictionary<'K, 'V>
 
 // TODO: get rid of this; use Structure directly
+/// Fast per-document lookup table derived from the CST; groups headings, links,
+/// tags, and YAML front matter into arrays and slug-keyed maps.
 type Index = {
     titles: array<Node<Heading>>
     headings: array<Node<Heading>>
@@ -20,6 +24,7 @@ type Index = {
 }
 
 module Index =
+    /// Build an Index by scanning all CST elements once.
     let ofCst (cels: Cst.Element[]) : Index =
         let titles = ResizeArray()
         let headingsBySlug = Dictionary<Slug, ResizeArray<Node<Heading>>>()
@@ -94,6 +99,7 @@ module Index =
         index.tags
         |> Array.filter (fun { data = tag } -> tag.name.text = name)
 
+    /// Find the link-reference definition whose normalised label equals the given label.
     let tryFindLinkDef (label: LinkLabel) index =
         index.linkDefs
         |> Array.tryFind (fun { data = ld } -> (MdLinkDef.normalizedLabel ld) = label)
@@ -106,9 +112,11 @@ module Index =
 
     let headings index = index.headings
 
+    /// Return all headings whose slug matches the given slug.
     let filterHeadingBySlug slug index =
         index.headingsBySlug |> Map.tryFind slug |> Option.defaultValue []
 
+    /// Find the wiki-link or MD link whose range contains the given position.
     let linkAtPos (pos: Position) index =
         let matching el =
             let range = Node.range el
@@ -119,6 +127,7 @@ module Index =
 
         fromWiki () |> Option.orElseWith fromMd
 
+    /// Find the heading or link-reference definition whose range contains the given position.
     let declAtPos (pos: Position) (index: Index) : option<Element> =
         let matching el =
             let range = Node.range el

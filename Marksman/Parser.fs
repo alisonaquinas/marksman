@@ -1,3 +1,5 @@
+/// Invokes Markdig to parse Markdown text into a Structure; behaviour is
+/// controlled by ParserSettings (title-from-heading, GLFM heading IDs, etc.).
 module Marksman.Parser
 
 open System
@@ -20,6 +22,7 @@ module Markdown =
 
     open Marksman.Cst
 
+    /// Markdig inline node representing a parsed wiki-link such as `[[doc#heading|title]]`.
     type WikiLinkInline
         (
             text: string,
@@ -39,12 +42,14 @@ module Markdown =
         member val Title = Option.map fst title
         member val TitleSpan = Option.map snd title
 
+    /// Markdig inline node representing a `#tag` parsed from document text.
     type TagInline(text: string) =
         inherit LeafInline()
 
         member val Text = text
 
 
+    /// Markdig inline parser that recognises `#tag` tokens.
     type TagsParser() as this =
         inherit InlineParser()
 
@@ -220,6 +225,8 @@ module Markdown =
             }
 
 
+    /// Walk all Markdig syntax nodes and extract Marksman CST elements
+    /// (headings, wiki-links, MD links, link defs, tags, YAML front matter).
     let scrapeText (parserSettings: ParserSettings) (text: Text) : array<Element> =
         let parsed: MarkdownObject = Markdown.Parse(text.content, markdigPipeline)
 
@@ -429,6 +436,8 @@ module Markdown =
 
         Array.sortInPlaceBy elemOffsets elements
 
+    /// Assemble a CST from a flat element array: computes heading scopes and
+    /// the parent-child relationship map.
     let buildCst (text: Text) (inputElements: Element[]) : Cst =
         let nestedDeeperThan (_, baseHeader) (_, otherHeader) =
             otherHeader.data.level >= baseHeader.data.level
@@ -501,6 +510,7 @@ module Markdown =
 
         { elements = elements; childMap = childMap }
 
+/// Parse Markdown text into a Structure using the given parser settings.
 let parse (parserSettings: ParserSettings) (text: Text) : Structure =
     if String.IsNullOrEmpty text.content then
         let cst: Cst.Cst = { elements = [||]; childMap = Map.empty }

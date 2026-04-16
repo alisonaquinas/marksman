@@ -1,3 +1,4 @@
+/// Undirected graph backed by an MMap, with a companion difference type.
 module Marksman.Graph
 
 open Marksman.MMap
@@ -6,6 +7,7 @@ open Marksman.Misc
 /// Undirected graph
 type Graph<'V> when 'V: comparison = { edges: MMap<'V, 'V> }
 
+/// Records the set of edges added and removed between two graph snapshots.
 type GraphDifference<'V> when 'V: comparison = {
     edgeDifference: Difference<'V * 'V>
 } with
@@ -22,6 +24,7 @@ type GraphDifference<'V> when 'V: comparison = {
 
         concatLines lines
 
+/// Functional API for <see cref="Graph" />.
 module Graph =
     let empty = { edges = MMap.empty }
 
@@ -45,6 +48,8 @@ module Graph =
 
         { g with edges = edges }
 
+    /// Removes a vertex and all its incident edges, invoking <c>cb</c> for each neighbor
+    /// that loses an edge.
     let removeVertexWithCallback cb v g =
         let edgesVs = MMap.tryFind v g.edges |> Option.defaultValue Set.empty
 
@@ -58,6 +63,7 @@ module Graph =
 
     let removeVertex v g = removeVertexWithCallback ignore v g
 
+    /// Computes the <see cref="GraphDifference" /> between two graph snapshots.
     let difference g1 g2 =
         let edges1 = g1.edges |> MMap.toSeq |> Set.ofSeq
         let edges2 = g2.edges |> MMap.toSeq |> Set.ofSeq

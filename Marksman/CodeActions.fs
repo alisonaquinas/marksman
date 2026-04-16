@@ -1,3 +1,4 @@
+/// Registry of LSP code actions: Table of Contents creation/update and missing-file creation.
 module Marksman.CodeActions
 
 open type System.Environment
@@ -20,6 +21,7 @@ open Marksman.Config
 
 let private logger = LogProvider.getLoggerByName "CodeActions"
 
+/// A pending text replacement action: a human-readable name, replacement text, and the target range.
 type DocumentAction = { name: string; newText: string; edit: Range }
 
 let documentEdit range text documentUri : WorkspaceEdit =
@@ -29,6 +31,7 @@ let documentEdit range text documentUri : WorkspaceEdit =
 
     { Changes = Some workspaceChanges; DocumentChanges = None }
 
+/// A pending file-creation action: a human-readable name and the URI of the file to create.
 type CreateFileAction = { name: string; newFileUri: DocumentUri }
 
 let createFile newFileUri : WorkspaceEdit =
@@ -109,6 +112,7 @@ let tableOfContentsInner (includeLevels: array<int>) (doc: Doc) : DocumentAction
     | _ -> None
 
 
+/// Returns a DocumentAction to create or update the TOC, or None if the TOC is already up to date.
 let tableOfContents
     (_range: Range)
     (_context: CodeActionContext)
@@ -118,6 +122,7 @@ let tableOfContents
     let includeLevels = config.CaTocInclude()
     tableOfContentsInner includeLevels doc
 
+/// Returns a CreateFileAction when the cursor is on a cross-doc link that points to a non-existent file.
 let createMissingFile
     (range: Range)
     (_context: CodeActionContext)
