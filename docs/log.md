@@ -16,6 +16,15 @@ See [[WIKI#Operations]] for operation conventions.
 
 ---
 
+## [2026-04-16] init | docs/design/api-layer — LSP API layer design document
+
+- Created [[design/api-layer|API Layer]] (440 lines)
+- Contents: transport overview, capability negotiation table, full LSP method catalog (lifecycle / sync / language / workspace), concurrency model diagram, 9 Mermaid sequence diagrams, state lifecycle, error handling table
+- Sequence diagrams cover: initialize handshake, didOpen, didChange, completion, go-to-definition, find references, rename (2-step), diagnostic push (background debounce), workspace folder change
+- Sources: `Marksman/Server.fs`, `Marksman/State.fs`
+
+---
+
 ## [2026-04-16] ingest | research/ — index research into wiki
 
 - Added `## Research` section to [[index]] (11 LSP spec files + Zettelkasten)
