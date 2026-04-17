@@ -66,7 +66,7 @@ Do not assume the working tree is clean. Verify with:
 These findings were verified during repo initialization on `2026-04-16` and may drift:
 
 - branch observed: `develop`
-- working tree observed: clean
-- test result observed: `312 passed`, `3 skipped`, `0 failed`
+- working tree observed: dirty (uncommitted test-infrastructure additions in `Tests/`)
+- test result observed: `336 passed`, `3 skipped`, `0 failed`
 
 Re-verify before relying on snapshot data.

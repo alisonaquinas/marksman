@@ -20,198 +20,90 @@ Prioritised analysis of all coverage gaps in the Marksman test suite. Each gap i
 
 ## P1 — Critical (zero test coverage for requirement)
 
-### GAP-01 · Completion.Candidates.Cap
+> [!NOTE] All P1 gaps resolved
+> All eight previously-critical requirements now have at least one test. The entries below are preserved for historical context.
+
+### GAP-01 · Completion.Candidates.Cap ✅ Resolved
 
 **Requirement:** [[requirements/completions#Tag: Completion.Candidates.Cap|Completion.Candidates.Cap]]
-**Missing:** The configured `completion.candidates` cap (default 50) is never verified at runtime. The `Seq.truncate maxCompletions` call in `Server.TextDocumentCompletion` is untested.
-
-**Suggested test (unit):**
-```fsharp
-// ComplTests.fs
-testCase "candidates cap respected at runtime" <| fun () ->
-    let folder = FakeFolder.Mk([ for i in 1..60 -> $"doc{i}.md", $"# Doc {i}" ])
-    let doc = FakeDoc.Mk("src.md", "[[")
-    let candidates = Compl.findCandidatesInDoc folder doc { Line = 0; Character = 2 }
-                     |> Seq.truncate 50
-                     |> Array.ofSeq
-    candidates.Length |> shouldEqual 50
-```
-
-**Also needed:** A test where `ComplCandidates()` returns 10 and asserts the list has ≤ 10 items.
+**Resolved by:** `ComplTests.CandidatesCap.rawFunction_notCapped_whenPoolExceedsCap` and `rawFunction_allReturned_whenPoolBelowCap`; `GapTests.CompletionCapTests.*`
 
 ---
 
-### GAP-02 · Completion.Incomplete.Flag
+### GAP-02 · Completion.Incomplete.Flag ✅ Resolved
 
 **Requirement:** [[requirements/completions#Tag: Completion.Incomplete.Flag|Completion.Incomplete.Flag]]
-**Missing:** The `isIncomplete` field in `CompletionList` is never asserted. The expression `Array.length candidates >= maxCompletions` in `Server.fs` is dead from a test perspective.
-
-**Suggested test (unit):**
-```fsharp
-// ComplTests.fs
-testCase "isIncomplete true when pool exceeds cap" <| fun () ->
-    let folder = FakeFolder.Mk([ for i in 1..60 -> $"doc{i}.md", $"# Doc {i}" ])
-    let doc    = FakeDoc.Mk("src.md", "[[")
-    let result = Compl.findCandidatesInDoc folder doc { Line = 0; Character = 2 }
-                 |> Seq.truncate 50 |> Array.ofSeq
-    result.Length |> shouldEqual 50   // cap reached
-    // isIncomplete = true when candidates.Length >= maxCompletions
-    (result.Length >= 50) |> shouldBeTrue
-
-testCase "isIncomplete false when pool below cap" <| fun () ->
-    let folder = FakeFolder.Mk([ for i in 1..5 -> $"doc{i}.md", $"# Doc {i}" ])
-    let doc    = FakeDoc.Mk("src.md", "[[")
-    let result = Compl.findCandidatesInDoc folder doc { Line = 0; Character = 2 }
-                 |> Array.ofSeq
-    result.Length |> shouldBeLessThan 50
-```
+**Resolved by:** `GapTests.CompletionCapTests.*` — four tests covering capped, below-cap, exact-cap, and empty-pool cases.
 
 ---
 
-### GAP-03 · Diagnostic.Severity.MarkdownLink
+### GAP-03 · Diagnostic.Severity.MarkdownLink ✅ Resolved
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Severity.MarkdownLink|Diagnostic.Severity.MarkdownLink]]
-**Missing:** No test creates a broken Markdown inline link and checks that the emitted diagnostic has `severity = 2` (Warning). The severity mapping for the `ML` case in `Diag.fs` is completely untested.
-
-**Suggested test (unit, in `DiagTest.fs`):**
-```fsharp
-testCase "brokenInlineLink_severity_is_warning" <| fun () ->
-    let folder = FakeFolder.Mk([ "src.md", "[text](missing.md)" ])
-    let diags  = Diag.checkFolder folder
-    let brokenDiag = diags |> Array.find (fun d -> d.Code = Some (Second "2"))
-    brokenDiag.Severity |> shouldEqual (Some DiagnosticSeverity.Warning)
-```
+**Resolved by:** `DiagTest.brokenMarkdownLink_hasSeverityWarning`
 
 ---
 
-### GAP-04 · Diagnostic.Debounce.Latency
+### GAP-04 · Diagnostic.Debounce.Latency ⚠ Partially resolved
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Debounce.Latency|Diagnostic.Debounce.Latency]]
-**Missing:** No timing test exists for the `DiagnosticsManager` 200 ms debounce. The p95 ≤ 500 ms Goal level is unverified.
+**Resolved by:** `GapTests.DebounceTests.*` — debounce fires and publishes diagnostics after a quiet period; rapid updates coalesce.
 
-**Suggested test (integration / performance):**
-This gap requires a server-level integration test harness (see [[tests/gaps#GAP-10|GAP-10]]). Once the harness exists:
-1. Send 5 `didChange` notifications at 50 ms intervals.
-2. Record timestamp of last `didChange` and timestamp of received `publishDiagnostics`.
-3. Assert elapsed ≤ 500 ms.
-
-**Blocker:** Depends on GAP-10 (LSP integration harness).
+**Remaining gap:** p95 ≤ 500 ms timing metric not formally measured. A performance/timing test would require a high-resolution timer harness beyond the current integration tests. See [[tests/gaps#GAP-10|GAP-10]] for context.
 
 ---
 
-### GAP-05 · Diagnostic.Ambiguous.RelatedInfo
+### GAP-05 · Diagnostic.Ambiguous.RelatedInfo ✅ Resolved
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Ambiguous.RelatedInfo|Diagnostic.Ambiguous.RelatedInfo]]
-**Missing:** `AmbiguousLink` is one of the three diagnostic types and has zero test coverage. No test creates two documents with the same slug and verifies that (a) an `AmbiguousLink` diagnostic is emitted, (b) the code is `"1"`, (c) `relatedInformation` lists both duplicate definitions.
-
-**Suggested test (unit, in `DiagTest.fs`):**
-```fsharp
-testCase "ambiguousWikiLink_firesWithRelatedInfo" <| fun () ->
-    let folder = FakeFolder.Mk([
-        "a.md",    "# Concept"
-        "b.md",    "# Concept"
-        "src.md",  "[[Concept]]"
-    ])
-    let diags = Diag.checkFolder folder
-                |> Array.filter (fun d -> d.Code = Some (Second "1"))
-    diags.Length |> shouldEqual 1
-    diags[0].RelatedInformation
-        |> Option.map Array.length
-        |> shouldEqual (Some 2)
-```
+**Resolved by:** `DiagTest.ambiguousWikiLink_hasCodeOneAndRelatedInfo` — two docs with same slug, asserts code `"1"` and two `relatedInformation` entries.
 
 ---
 
-### GAP-06 · Rename.Prepare.Rejection
+### GAP-06 · Rename.Prepare.Rejection ✅ Resolved
 
 **Requirement:** [[requirements/rename#Tag: Rename.Prepare.Rejection|Rename.Prepare.Rejection]]
-**Missing:** `Refactor.renameRange` is never tested. The entire `textDocument/prepareRename` contract (return range on renameable, null on non-renameable) is untested.
-
-**Suggested tests (unit, in `RefactorTests.fs`):**
-```fsharp
-testCase "prepareRename_onHeading_returnsRange" <| fun () ->
-    let doc = FakeDoc.Mk("a.md", "# My Heading\n\nbody text")
-    let range = Refactor.renameRange doc { Line = 0; Character = 4 }
-    range |> shouldNotEqual None
-
-testCase "prepareRename_onBodyText_returnsNone" <| fun () ->
-    let doc = FakeDoc.Mk("a.md", "# My Heading\n\nbody text")
-    let range = Refactor.renameRange doc { Line = 2; Character = 2 }
-    range |> shouldEqual None
-```
+**Resolved by:** `RefactorTests.PrepareRenameTests.prepareRename_onHeading_returnsRange` and `prepareRename_onBodyText_returnsNone`
 
 ---
 
-### GAP-07 · TOC.Empty.NoAction
+### GAP-07 · TOC.Empty.NoAction ✅ Resolved
 
 **Requirement:** [[requirements/table-of-contents#Tag: TOC.Empty.NoAction|TOC.Empty.NoAction]]
-**Missing:** `CodeActions.tableOfContents` returns `None` on a heading-free document, but no test verifies this.
-
-**Suggested test (unit, in `TocTests.fs` or `CodeActionTests.fs`):**
-```fsharp
-testCase "tocAction_noHeadings_returnsNone" <| fun () ->
-    let doc    = FakeDoc.Mk("plain.md", "Just some body text.\n\nNo headings here.")
-    let folder = FakeFolder.Mk([ "plain.md", doc ])
-    let config = Folder.configOrDefault folder
-    let action = CodeActions.tableOfContents
-                     (fullDocumentRange doc) emptyContext config doc
-    action |> shouldEqual None
-```
+**Resolved by:** `TocTests.TocEmptyTests.tocAction_noHeadings_returnsNone`
 
 ---
 
-### GAP-08 · Workspace.FileExtension.Filter
+### GAP-08 · Workspace.FileExtension.Filter ✅ Resolved
 
 **Requirement:** [[requirements/workspace#Tag: Workspace.FileExtension.Filter|Workspace.FileExtension.Filter]]
-**Missing:** No test verifies that files with non-configured extensions are excluded from the workspace index. The `isMarkdownFile` predicate in `Server.fs` and `Folder.tryLoad` extension filtering are both untested.
-
-**Suggested test (unit, in `WorkspaceTest.fs`):**
-```fsharp
-testCase "nonMdFile_absent_from_completion_index" <| fun () ->
-    // Create a folder that loads from disk; include a .txt file alongside .md files
-    // Assert .txt file does not appear in Folder.docs or workspace symbol results
-    let folder = Folder.singleFile (FakeDoc.Mk("notes.txt", "# Heading"))
-                 |> Option.defaultWith (fun () -> failwith "unexpected")
-    Folder.docs folder |> shouldBeEmpty
-```
+**Resolved by:** `GapTests.FileExtensionTests.*` — three tests covering custom extension, default extension exclusion, and control case.
 
 ---
 
 ## P2 — High (tested at wrong layer or incomplete conditions)
 
-### GAP-09 · Diagnostic.Severity.WikiLink (severity field unasserted)
+### GAP-09 · Diagnostic.Severity.WikiLink ✅ Resolved
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Severity.WikiLink|Diagnostic.Severity.WikiLink]]
-**Gap:** `DiagTest.crossFileDiagOnBrokenWikiLinks` verifies a diagnostic is _emitted_ but never checks `diagnostic.Severity = Error`.
-
-**Fix:** Add severity assertions to the two existing broken-wiki-link tests:
-```fsharp
-diags |> Array.iter (fun d ->
-    d.Severity |> shouldEqual (Some DiagnosticSeverity.Error))
-```
+**Resolved by:** `DiagTest.brokenWikiLink_hasSeverityError` — asserts `severity = Error` on a broken wiki-link diagnostic.
 
 ---
 
-### GAP-10 · No LSP integration test harness
+### GAP-10 · LSP integration test harness ✅ Resolved
 
-**Impact:** Blocks full coverage for `Navigation.Definition.LinkTypes`, `Completion.Trigger.Coverage`, `Rename.Prepare.Rejection`, `Diagnostic.Debounce.Latency`, and all server-handler paths.
+**Resolved by:** `Tests/TestClient.fs` (`CaptureClient`), `Tests/ServerHarness.fs` (`TestServer`), and `GapTests.IntegrationTests.*`.
 
-**Gap:** All feature tests operate at the domain layer (`Compl`, `Refs`, `Diag`, `Refactor`). No test instantiates `MarksmanServer`, drives LSP JSON-RPC messages through it, and reads the responses.
-
-**Suggested approach:** Add an `IntegrationTests.fs` file using `FakeLanguageServer` pattern from the LSP library, or use the existing `LanguageServerProtocol` project's test helpers if available. Minimum viable scope:
-1. `initialize` → verify `InitializeResult.Capabilities`
-2. `textDocument/didOpen` → verify `publishDiagnostics`
-3. `textDocument/completion` → verify item count ≤ cap
-4. `textDocument/definition` → verify location
+The harness creates real files on disk, runs `Initialize` + `Initialized`, and exposes `DidOpen` / `WaitDiagnostics`. Three integration tests verify broken-link diagnostics, valid-link no-diagnostics, and `didOpen`-triggered pipeline firing.
 
 ---
 
-### GAP-11 · Diagnostic.Code.Assignment — codes "1" and "2" unverified
+### GAP-11 · Diagnostic.Code.Assignment — codes "1" and "2" ✅ Resolved
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Code.Assignment|Diagnostic.Code.Assignment]]
-**Gap:** Code `"3"` (NonBreakableWhitespace) is verified indirectly by `nonBreakingWhitespace`. Codes `"1"` and `"2"` are never asserted.
+**Resolved by:** `DiagTest.brokenWikiLink_hasCodeTwo` (code `"2"`) and `DiagTest.ambiguousWikiLink_hasCodeOneAndRelatedInfo` (code `"1"`).
 
-**Fix:** In GAP-05 (ambiguous test), assert `d.Code = Some (Second "1")`. In the broken-wiki-link test, assert `d.Code = Some (Second "2")`.
+**Remaining gap:** `source = "Marksman"` field on diagnostics still never asserted.
 
 ---
 
@@ -225,20 +117,10 @@ Create a temporary directory with two `.md` files and a `.gitignore` that ignore
 
 ---
 
-### GAP-13 · TOC.Slug.GLFM — no anchor-level TOC test
+### GAP-13 · TOC.Slug.GLFM ✅ Resolved
 
 **Requirement:** [[requirements/table-of-contents#Tag: TOC.Slug.GLFM|TOC.Slug.GLFM]]
-**Gap:** GLFM disambiguation is tested at the symbol-extraction level (`AstTests.testSymsWhenRepeatedHeadingsGlfm`) but not at the TOC rendering level. No test verifies that duplicate headings produce `#introduction`, `#introduction-1`, `#introduction-2` in TOC anchor links.
-
-**Suggested test (unit, in `TocTests.fs`):**
-```fsharp
-testCase "glfm_disambiguates_duplicate_headings_in_toc" <| fun () ->
-    let doc = FakeDoc.Mk("a.md",
-        "## Introduction\n\nFoo\n\n## Introduction\n\nBar\n\n## Introduction\n\nBaz")
-    let toc  = Toc.createToc (Toc.tocLevelsFromConfig Config.Default) doc
-    let anchors = toc |> List.map (fun entry -> entry.Anchor)
-    anchors |> shouldEqual [ "#introduction"; "#introduction-1"; "#introduction-2" ]
-```
+**Resolved by:** `TocTests.GlfmTocTests.glfm_disambiguates_duplicate_headings_in_toc` — two identical headings produce `introduction` and `introduction-1` anchor slugs in the rendered TOC.
 
 ---
 
@@ -262,17 +144,10 @@ testCase "glfm_disambiguates_duplicate_headings_in_toc" <| fun () ->
 
 ---
 
-### GAP-16 · Config.Validation.Candidates — zero value untested
+### GAP-16 · Config.Validation.Candidates — zero value ✅ Resolved
 
 **Requirement:** [[requirements/configuration#Tag: Config.Validation.Candidates|Config.Validation.Candidates]]
-**Gap:** `testParse_broken_5` tests `candidates = -1`. The requirement says "strictly positive", meaning `candidates = 0` should also be rejected, but this is not tested.
-
-**Fix:**
-```fsharp
-testCase "testParse_broken_zeroCandidate" <| fun () ->
-    let toml = "[completion]\ncandidates = 0"
-    Config.parse toml |> shouldEqual None
-```
+**Resolved by:** `ConfigTests.testParse_broken_zeroCandidates` — `candidates = 0` → `None`.
 
 ---
 
@@ -347,35 +222,35 @@ These should be un-skipped when footnote parsing is implemented, with a correspo
 
 ## Gap Summary Table
 
-| Gap ID | Requirement | Priority | Effort |
+| Gap ID | Requirement | Priority | Status |
 |--------|-------------|----------|--------|
-| GAP-01 | `Completion.Candidates.Cap` | P1 | Low |
-| GAP-02 | `Completion.Incomplete.Flag` | P1 | Low |
-| GAP-03 | `Diagnostic.Severity.MarkdownLink` | P1 | Low |
-| GAP-04 | `Diagnostic.Debounce.Latency` | P1 | High (needs harness) |
-| GAP-05 | `Diagnostic.Ambiguous.RelatedInfo` | P1 | Low |
-| GAP-06 | `Rename.Prepare.Rejection` | P1 | Low |
-| GAP-07 | `TOC.Empty.NoAction` | P1 | Low |
-| GAP-08 | `Workspace.FileExtension.Filter` | P1 | Medium |
-| GAP-09 | `Diagnostic.Severity.WikiLink` (severity field) | P2 | Trivial |
-| GAP-10 | LSP integration harness | P2 | High |
-| GAP-11 | `Diagnostic.Code.Assignment` codes "1","2" | P2 | Low |
-| GAP-12 | `Link.Resolution.IgnoreGlob` end-to-end | P2 | Medium |
-| GAP-13 | `TOC.Slug.GLFM` anchor level | P2 | Low |
-| GAP-14 | `Link.Resolution.ModeScope` completion/def | P2 | Low |
-| GAP-15 | `Rename.StyleBinding.Consistency` negative test | P2 | Low |
-| GAP-16 | `Config.Validation.Candidates` zero | P2 | Trivial |
-| GAP-17 | `Navigation.Definition.LinkTypes` LSP level | P3 | High (needs harness) |
-| GAP-18 | `Navigation.References.Completeness` recall metric | P3 | Medium |
-| GAP-19 | `Workspace.ProjectDetection.Root` file loading | P3 | Medium |
-| GAP-20 | `Workspace.MultiFolder.Isolation` cross-folder | P3 | Medium |
-| GAP-21 | Text deletion / cross-line replace | P4 | Low |
-| GAP-22 | MMap operations | P4 | Low |
-| GAP-23 | SuffixTree.add | P4 | Low |
-| GAP-24 | Semantic tokens edge cases | P4 | Low |
+| GAP-01 | `Completion.Candidates.Cap` | P1 | ✅ Resolved |
+| GAP-02 | `Completion.Incomplete.Flag` | P1 | ✅ Resolved |
+| GAP-03 | `Diagnostic.Severity.MarkdownLink` | P1 | ✅ Resolved |
+| GAP-04 | `Diagnostic.Debounce.Latency` | P1 | ⚠ Partial (p95 timing not measured) |
+| GAP-05 | `Diagnostic.Ambiguous.RelatedInfo` | P1 | ✅ Resolved |
+| GAP-06 | `Rename.Prepare.Rejection` | P1 | ✅ Resolved |
+| GAP-07 | `TOC.Empty.NoAction` | P1 | ✅ Resolved |
+| GAP-08 | `Workspace.FileExtension.Filter` | P1 | ✅ Resolved |
+| GAP-09 | `Diagnostic.Severity.WikiLink` (severity field) | P2 | ✅ Resolved |
+| GAP-10 | LSP integration harness | P2 | ✅ Resolved |
+| GAP-11 | `Diagnostic.Code.Assignment` codes "1","2" | P2 | ✅ Resolved (source field still untested) |
+| GAP-12 | `Link.Resolution.IgnoreGlob` end-to-end | P2 | Open |
+| GAP-13 | `TOC.Slug.GLFM` anchor level | P2 | ✅ Resolved |
+| GAP-14 | `Link.Resolution.ModeScope` completion/def | P2 | Open |
+| GAP-15 | `Rename.StyleBinding.Consistency` negative test | P2 | Open |
+| GAP-16 | `Config.Validation.Candidates` zero | P2 | ✅ Resolved |
+| GAP-17 | `Navigation.Definition.LinkTypes` LSP level | P3 | Open |
+| GAP-18 | `Navigation.References.Completeness` recall metric | P3 | Open |
+| GAP-19 | `Workspace.ProjectDetection.Root` file loading | P3 | Open |
+| GAP-20 | `Workspace.MultiFolder.Isolation` cross-folder | P3 | Open |
+| GAP-21 | Text deletion / cross-line replace | P4 | ⚠ Partial (delete tested; cross-line not yet) |
+| GAP-22 | MMap operations | P4 | Open |
+| GAP-23 | SuffixTree.add | P4 | Open |
+| GAP-24 | Semantic tokens edge cases | P4 | Open |
 | GAP-25 | Footnote tests (skipped) | P4 | Deferred |
 
-**Quick wins (trivial/low effort, P1 or P2):** GAP-01, GAP-02, GAP-03, GAP-05, GAP-06, GAP-07, GAP-09, GAP-11, GAP-13, GAP-14, GAP-15, GAP-16
+**Open P2 quick wins (low effort):** GAP-12, GAP-14, GAP-15
 
 ---
 

@@ -139,6 +139,13 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `tagOpening` | Tag completion on `# ` (opening hash with space) |
 | `tagWithName` | Tag completion on partial `#ta ` |
 
+### CandidatesCap
+
+| Test | What it verifies | Requirement tag |
+|------|-----------------|----------------|
+| `rawFunction_notCapped_whenPoolExceedsCap` | `findCandidatesInDoc` returns more than cap when pool exceeds cap (cap applied at server layer) | `Completion.Candidates.Cap` |
+| `rawFunction_allReturned_whenPoolBelowCap` | `findCandidatesInDoc` returns fewer than cap when pool is small | `Completion.Candidates.Cap` |
+
 ---
 
 ## ConfigTests
@@ -163,6 +170,7 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `testParse_broken_5` | `candidates = -1` (negative) → `None` | `Config.Validation.Candidates` |
 | `testParse_broken_6` | `glfm_heading_ids.enable = -1` (integer) → `None` | `Config.Fault.Isolation` |
 | `testParse_broken_tocInclude` | `toc.include = [1, -1]` negative level → `None` | `Config.Fault.Isolation` |
+| `testParse_broken_zeroCandidates` | `candidates = 0` (zero, not strictly positive) → `None` | `Config.Validation.Candidates` |
 | `testDefault` | Embedded `default.marksman.toml` parses to `Config.Default` | `Config.Precedence.Layering` |
 | `testDefault_titleVsCompletionStyle` | `title_from_heading = false` → `FileStem` style | `Link.Wiki.StyleBinding` |
 
@@ -204,11 +212,15 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 |------|-----------------|----------------|
 | `documentIndex_1` | `Doc.index` extracts two titles correctly | — |
 | `nonBreakingWhitespace` | Detects U+00A0 after `##`; verifies range | `Diagnostic.Code.Assignment` (code `"3"`) |
-| `noDiagOnShortcutLinks` | Shortcut links produce no diagnostic; broken `[[#h42]]` fires | `Diagnostic.Severity.WikiLink` (partial) |
+| `noDiagOnShortcutLinks` | Shortcut links produce no diagnostic; broken `[[#h42]]` fires | `Diagnostic.Severity.WikiLink` |
 | `noDiagOnRealUrls` | `https://` URLs produce no broken-link diagnostic | `Link.Inline.URLSkip` |
 | `noDiagOnNonMarkdownFiles` | Links to folders produce no diagnostic; `.md` links do | — |
-| `crossFileDiagOnBrokenWikiLinks` | `[[bad]]` with no matching file fires a diagnostic | `Diagnostic.Severity.WikiLink` (partial) |
+| `crossFileDiagOnBrokenWikiLinks` | `[[bad]]` with no matching file fires a diagnostic | `Diagnostic.Severity.WikiLink` |
 | `noCrossFileDiagOnSingleFileFolders` | Single-file folder suppresses cross-file diagnostics | `Link.Resolution.ModeScope` |
+| `brokenWikiLink_hasSeverityError` | Broken wiki-link diagnostic `severity = Error` asserted | `Diagnostic.Severity.WikiLink` |
+| `brokenMarkdownLink_hasSeverityWarning` | Broken inline MD link `severity = Warning` asserted | `Diagnostic.Severity.MarkdownLink` |
+| `brokenWikiLink_hasCodeTwo` | Broken wiki-link diagnostic `code = "2"` asserted | `Diagnostic.Code.Assignment` |
+| `ambiguousWikiLink_hasCodeOneAndRelatedInfo` | Two docs with same slug → code `"1"`, `relatedInformation` has 2 entries | `Diagnostic.Ambiguous.RelatedInfo`, `Diagnostic.Code.Assignment` |
 
 ---
 
@@ -345,6 +357,8 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `ReferenceLinks.onDefLabel` | Rename link label at definition site; all occurrences updated | `Rename.Refactoring.Completeness` |
 | `HeadingLinks.onTitle` | Rename H1 title; updates wiki-links in other docs | `Rename.Refactoring.Completeness`, `Rename.StyleBinding.Consistency` |
 | `HeadingLinks.onSubtitle` | Rename H2 heading; updates wiki-links and inline links | `Rename.Refactoring.Completeness`, `Rename.StyleBinding.Consistency` |
+| `PrepareRenameTests.prepareRename_onHeading_returnsRange` | Cursor on heading → `renameRange` returns `Some range` | `Rename.Prepare.Rejection` |
+| `PrepareRenameTests.prepareRename_onBodyText_returnsNone` | Cursor on body text → `renameRange` returns `None` | `Rename.Prepare.Rejection` |
 
 ---
 
@@ -466,6 +480,7 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `applyTextChange_insert_on_empty` | Insert into empty document |
 | `applyTextChange_insert_next_line` | Insert at start of second line |
 | `applyTextChange_replace_single` | Replace a range |
+| `applyTextChange_delete_single` | Delete a range (empty replacement) | 
 
 ---
 
@@ -492,6 +507,8 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `DocumentEdit.update_atBeginningOfFile` | Existing TOC replaced when headings change | `TOC.Generation.Markers` |
 | `DocumentEdit.upToDate_noUpdate` | Up-to-date TOC → `None` (no action) | — |
 | `DocumentEdit.upToDate_whitespace_noUpdate` | TOC with extra blank line → up-to-date, no action | — |
+| `TocEmptyTests.tocAction_noHeadings_returnsNone` | Heading-free doc → `tableOfContentsInner` returns `None` | `TOC.Empty.NoAction` |
+| `GlfmTocTests.glfm_disambiguates_duplicate_headings_in_toc` | Two identical headings → TOC anchor slugs use `-1` suffix | `TOC.Slug.GLFM` |
 
 ---
 
@@ -511,6 +528,70 @@ Per-file listing of every test in the Marksman test suite. Tests are grouped by 
 | `WorkspaceTest.folderConfig_noUserConfig` | Folder config preserved when no user config | `Config.Precedence.Layering` |
 | `WorkspaceTest.folderConfig_userConfig` | User config overrides folder config | `Config.Precedence.Layering` |
 | `WorkspaceTest.folderConfig_userConfig_folderAdd` | User config applied to folder added after workspace creation | `Config.Precedence.Layering` |
+
+---
+
+## GapTests
+
+**Source:** `Tests/GapTests.fs` · **Level:** Unit / Integration · **Feature:** Completions, Diagnostics, Workspace, LSP integration
+
+### CompletionCapTests
+
+| Test | What it verifies | Requirement tag |
+|------|-----------------|----------------|
+| `applyCompletionCap_isIncomplete_whenCapped` | 60-item pool with cap 50 → 50 items returned, `IsIncomplete = true` | `Completion.Incomplete.Flag` |
+| `applyCompletionCap_notIncomplete_whenBelowCap` | 5-item pool with cap 50 → 5 items, `IsIncomplete = false` | `Completion.Incomplete.Flag` |
+| `applyCompletionCap_exactCap_isIncomplete` | Exactly 50 items with cap 50 → `IsIncomplete = true` (boundary) | `Completion.Incomplete.Flag` |
+| `applyCompletionCap_emptyInput_notIncomplete` | Empty pool → 0 items, `IsIncomplete = false` | `Completion.Incomplete.Flag` |
+
+### DebounceTests
+
+| Test | What it verifies | Requirement tag |
+|------|-----------------|----------------|
+| `debounce_publishesDiagnostics_afterQuietPeriod` | Open file with broken wiki-link; debounce fires and publishes diagnostic | `Diagnostic.Debounce.Latency` |
+| `debounce_suppressesDuplicateUpdates_duringEdit` | Rapid identical open calls coalesce; final state published | `Diagnostic.Debounce.Latency` |
+
+### FileExtensionTests
+
+| Test | What it verifies | Requirement tag |
+|------|-----------------|----------------|
+| `customExtension_txtDoc_resolvedBySlug` | Config `coreMarkdownFileExtensions = ["txt"]` → `.txt` slug resolves `[[target]]` | `Workspace.FileExtension.Filter` |
+| `defaultExtensions_txtDoc_notResolved` | Default `["md"; "markdown"]` config → `.txt` doc slug includes extension, `[[target]]` is broken | `Workspace.FileExtension.Filter` |
+| `defaultExtensions_mdDoc_resolvedBySlug` | Control: `.md` doc with default config resolves correctly | `Workspace.FileExtension.Filter` |
+
+### IntegrationTests
+
+Uses `TestServer` harness; creates real files on disk, drives `Initialize` / `didOpen` through `MarksmanServer`, and asserts on published diagnostics.
+
+| Test | What it verifies | Requirement tag |
+|------|-----------------|----------------|
+| `integration_brokenLink_publishesDiagnostic` | Workspace file with `[[does-not-exist]]` → Error diagnostic published with matching message | `Diagnostic.Severity.WikiLink` |
+| `integration_validLink_noDiagnostic` | Two files where one wiki-links to the other → no diagnostics for linking file | — |
+| `integration_didOpen_triggersAdditionalDiagnostics` | `textDocument/didOpen` with broken link → diagnostic pipeline fires and publishes error | `Diagnostic.Debounce.Latency` |
+
+---
+
+## Helpers
+
+**Source:** `Tests/Helpers.fs` · **Level:** N/A · **Feature:** Test infrastructure
+
+No runnable tests. Provides `FakeDoc.Mk`, `FakeFolder.Mk`, and related factory helpers used throughout the test suite.
+
+---
+
+## ServerHarness
+
+**Source:** `Tests/ServerHarness.fs` · **Level:** N/A · **Feature:** Test infrastructure (in-process LSP server)
+
+No runnable tests. Provides `TestServer` — an in-process `MarksmanServer` wrapper that writes real files to a temp directory, calls `Initialize` and `Initialized`, and exposes `DidOpen` / `WaitDiagnostics` helpers for integration tests in `GapTests.IntegrationTests` and `GapTests.DebounceTests`.
+
+---
+
+## TestClient
+
+**Source:** `Tests/TestClient.fs` · **Level:** N/A · **Feature:** Test infrastructure (LSP notification capture)
+
+No runnable tests. Provides `CaptureClient` — a `MarksmanClient` wrapper whose `notiSender` captures every `textDocument/publishDiagnostics` notification in a `ConcurrentQueue` for test assertions.
 
 ---
 

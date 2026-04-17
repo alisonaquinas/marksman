@@ -93,18 +93,20 @@ Requirement-by-requirement cross-reference: for each of the 29 Planguage require
 
 ## Completions
 
-### Completion.Candidates.Cap ❌ None
+### Completion.Candidates.Cap ✅ Covered
 
 **Requirement:** [[requirements/completions#Tag: Completion.Candidates.Cap|completions § Candidates Cap]]
 
 | Test | File | Coverage |
 |------|------|---------|
-| `testParse_7` | `ConfigTests.fs` | `candidates = 100` parses from TOML (config parse only; runtime cap not tested) |
+| `testParse_7` | `ConfigTests.fs` | `candidates = 100` parses from TOML |
+| `CandidatesCap.rawFunction_notCapped_whenPoolExceedsCap` | `ComplTests.fs` | `findCandidatesInDoc` returns more results than cap when pool exceeds cap |
+| `CandidatesCap.rawFunction_allReturned_whenPoolBelowCap` | `ComplTests.fs` | All results returned when pool is small |
+| `CompletionCapTests.applyCompletionCap_isIncomplete_whenCapped` | `GapTests.fs` | `applyCompletionCap 50` truncates 60-item seq to 50 |
+| `CompletionCapTests.applyCompletionCap_emptyInput_notIncomplete` | `GapTests.fs` | Empty pool returns 0 items |
 
 **Untested conditions:**
-- `Seq.truncate maxCompletions` never verified to limit response length
-- No test with a workspace larger than the default cap (50)
-- No test for a custom cap value being respected at runtime
+- No test verifies the server sends the capped response in an actual LSP `textDocument/completion` round-trip
 
 ---
 
@@ -126,44 +128,44 @@ Requirement-by-requirement cross-reference: for each of the 29 Planguage require
 
 ---
 
-### Completion.Incomplete.Flag ❌ None
+### Completion.Incomplete.Flag ✅ Covered
 
 **Requirement:** [[requirements/completions#Tag: Completion.Incomplete.Flag|completions § Incomplete Flag]]
 
-No tests exist for `isIncomplete` being set or cleared.
-
-**Untested conditions:**
-- `isIncomplete = true` when pool > cap
-- `isIncomplete = false` when pool ≤ cap
+| Test | File | Coverage |
+|------|------|---------|
+| `CompletionCapTests.applyCompletionCap_isIncomplete_whenCapped` | `GapTests.fs` | `IsIncomplete = true` when pool (60) exceeds cap (50) |
+| `CompletionCapTests.applyCompletionCap_notIncomplete_whenBelowCap` | `GapTests.fs` | `IsIncomplete = false` when pool (5) is below cap |
+| `CompletionCapTests.applyCompletionCap_exactCap_isIncomplete` | `GapTests.fs` | `IsIncomplete = true` at exact cap boundary (50 items, cap 50) |
+| `CompletionCapTests.applyCompletionCap_emptyInput_notIncomplete` | `GapTests.fs` | `IsIncomplete = false` for empty pool |
 
 ---
 
 ## Diagnostics
 
-### Diagnostic.Severity.WikiLink ⚠ Partial
+### Diagnostic.Severity.WikiLink ✅ Covered
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Severity.WikiLink|diagnostics § Severity WikiLink]]
 
 | Test | File | Coverage |
 |------|------|---------|
-| `crossFileDiagOnBrokenWikiLinks` | `DiagTest.fs` | Broken wiki-link fires a diagnostic (existence verified) |
+| `crossFileDiagOnBrokenWikiLinks` | `DiagTest.fs` | Broken wiki-link fires a diagnostic |
 | `noDiagOnShortcutLinks` | `DiagTest.fs` | Broken `[[#h42]]` fires a diagnostic |
-
-**Untested conditions:**
-- `severity` field of emitted diagnostic never asserted to equal `1` (Error)
-- `AmbiguousLink` diagnostic severity never tested at all
+| `brokenWikiLink_hasSeverityError` | `DiagTest.fs` | `severity = Error` asserted on broken wiki-link diagnostic |
+| `ambiguousWikiLink_hasCodeOneAndRelatedInfo` | `DiagTest.fs` | Ambiguous link fires `Error` severity diagnostic |
 
 ---
 
-### Diagnostic.Severity.MarkdownLink ❌ None
+### Diagnostic.Severity.MarkdownLink ✅ Covered
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Severity.MarkdownLink|diagnostics § Severity MarkdownLink]]
 
-No tests verify the `severity = 2` (Warning) field on broken or ambiguous Markdown link diagnostics.
+| Test | File | Coverage |
+|------|------|---------|
+| `brokenMarkdownLink_hasSeverityWarning` | `DiagTest.fs` | Broken inline link `[text](missing.md)` → `severity = Warning` asserted |
 
 **Untested conditions:**
-- Broken inline link `[text](missing.md)` → `severity = 2`
-- Broken reference link → `severity = 2`
+- Broken reference-style link `severity = Warning` not separately verified
 
 ---
 
@@ -173,28 +175,37 @@ No tests verify the `severity = 2` (Warning) field on broken or ambiguous Markdo
 
 | Test | File | Coverage |
 |------|------|---------|
-| `nonBreakingWhitespace` | `DiagTest.fs` | Code `"3"` for `NonBreakableWhitespace` verified indirectly via range check |
+| `nonBreakingWhitespace` | `DiagTest.fs` | Code `"3"` for `NonBreakableWhitespace` verified via range check |
+| `brokenWikiLink_hasCodeTwo` | `DiagTest.fs` | Code `"2"` for `BrokenLink` asserted |
+| `ambiguousWikiLink_hasCodeOneAndRelatedInfo` | `DiagTest.fs` | Code `"1"` for `AmbiguousLink` asserted |
 
 **Untested conditions:**
-- Code `"1"` for `AmbiguousLink` never tested (no ambiguous-link test exists)
-- Code `"2"` for `BrokenLink` never asserted
 - `source = "Marksman"` on any diagnostic never asserted
 
 ---
 
-### Diagnostic.Debounce.Latency ❌ None
+### Diagnostic.Debounce.Latency ⚠ Partial
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Debounce.Latency|diagnostics § Debounce Latency]]
 
-No timing tests exist for the `DiagnosticsManager` 200 ms debounce or end-to-end diagnostic delivery latency.
+| Test | File | Coverage |
+|------|------|---------|
+| `debounce_publishesDiagnostics_afterQuietPeriod` | `GapTests.fs` | Debounce fires after quiet period; diagnostic published |
+| `debounce_suppressesDuplicateUpdates_duringEdit` | `GapTests.fs` | Rapid bursts coalesce; final state published |
+| `integration_didOpen_triggersAdditionalDiagnostics` | `GapTests.fs` | `didOpen` triggers diagnostic pipeline end-to-end |
+
+**Untested conditions:**
+- p95 ≤ 500 ms latency metric not formally measured (tests use polling with `debounceMs × 20` ceiling, not wall-clock assertions)
 
 ---
 
-### Diagnostic.Ambiguous.RelatedInfo ❌ None
+### Diagnostic.Ambiguous.RelatedInfo ✅ Covered
 
 **Requirement:** [[requirements/diagnostics#Tag: Diagnostic.Ambiguous.RelatedInfo|diagnostics § Ambiguous RelatedInfo]]
 
-`AmbiguousLink` (diagnostic code `"1"`) has zero test coverage. No test creates two documents with the same slug and verifies that `relatedInformation` entries are populated.
+| Test | File | Coverage |
+|------|------|---------|
+| `ambiguousWikiLink_hasCodeOneAndRelatedInfo` | `DiagTest.fs` | Two docs with same slug → `AmbiguousLink` with code `"1"` and 2 `relatedInformation` entries |
 
 ---
 
@@ -278,11 +289,14 @@ No timing tests exist for the `DiagnosticsManager` 200 ms debounce or end-to-end
 
 ---
 
-### Rename.Prepare.Rejection ❌ None
+### Rename.Prepare.Rejection ✅ Covered
 
 **Requirement:** [[requirements/rename#Tag: Rename.Prepare.Rejection|rename § Prepare Rejection]]
 
-No tests exist for `textDocument/prepareRename`. The `Refactor.renameRange` function is called by the handler but never tested in isolation or via the server.
+| Test | File | Coverage |
+|------|------|---------|
+| `PrepareRenameTests.prepareRename_onHeading_returnsRange` | `RefactorTests.fs` | Cursor on heading → `renameRange` returns `Some range` |
+| `PrepareRenameTests.prepareRename_onBodyText_returnsNone` | `RefactorTests.fs` | Cursor on body text → `renameRange` returns `None` |
 
 ---
 
@@ -329,7 +343,7 @@ No tests exist for `textDocument/prepareRename`. The `Refactor.renameRange` func
 
 ---
 
-### TOC.Slug.GLFM ⚠ Partial
+### TOC.Slug.GLFM ✅ Covered
 
 **Requirement:** [[requirements/table-of-contents#Tag: TOC.Slug.GLFM|table-of-contents § Slug GLFM]]
 
@@ -338,18 +352,17 @@ No tests exist for `textDocument/prepareRename`. The `Refactor.renameRange` func
 | `testSymsWhenRepeatedHeadingsGlfm` | `AstTests.fs` | GLFM slug de-duplication at symbol extraction level |
 | `testSymsWhenRepeatedHeadingsNoGlfm` | `AstTests.fs` | Without GLFM: no de-duplication at symbol level |
 | `testParse_8` | `ConfigTests.fs` | `glfm_heading_ids.enable = true` parses from TOML |
-
-**Untested conditions:**
-- No test at the TOC render level that verifies anchor links use `-1`, `-2` suffixes for duplicate headings
-- No round-trip test: document with two `## Introduction` headings → TOC → assert `#introduction` and `#introduction-1`
+| `GlfmTocTests.glfm_disambiguates_duplicate_headings_in_toc` | `TocTests.fs` | Two identical headings → `introduction` and `introduction-1` anchor slugs in rendered TOC |
 
 ---
 
-### TOC.Empty.NoAction ❌ None
+### TOC.Empty.NoAction ✅ Covered
 
 **Requirement:** [[requirements/table-of-contents#Tag: TOC.Empty.NoAction|table-of-contents § Empty No Action]]
 
-No test verifies that `textDocument/codeAction` returns no TOC action for a heading-free document.
+| Test | File | Coverage |
+|------|------|---------|
+| `TocEmptyTests.tocAction_noHeadings_returnsNone` | `TocTests.fs` | Heading-free document → `tableOfContentsInner` returns `None` |
 
 ---
 
@@ -385,11 +398,15 @@ No test verifies that `textDocument/codeAction` returns no TOC action for a head
 
 ---
 
-### Workspace.FileExtension.Filter ❌ None
+### Workspace.FileExtension.Filter ✅ Covered
 
 **Requirement:** [[requirements/workspace#Tag: Workspace.FileExtension.Filter|workspace § File Extension Filter]]
 
-No tests exist for extension-based file filtering. No test creates a workspace with `.txt`, `.rst`, or other non-Markdown files and verifies they are excluded from the index.
+| Test | File | Coverage |
+|------|------|---------|
+| `FileExtensionTests.customExtension_txtDoc_resolvedBySlug` | `GapTests.fs` | Config `["txt"]` → `.txt` slug resolves `[[target]]` |
+| `FileExtensionTests.defaultExtensions_txtDoc_notResolved` | `GapTests.fs` | Default `["md"; "markdown"]` → `.txt` slug is broken link |
+| `FileExtensionTests.defaultExtensions_mdDoc_resolvedBySlug` | `GapTests.fs` | Control: `.md` doc with default config resolves correctly |
 
 ---
 
@@ -416,11 +433,11 @@ No tests exist for extension-based file filtering. No test creates a workspace w
 
 | Test | File | Coverage |
 |------|------|---------|
-| `testParse_broken_5` | `ConfigTests.fs` | `candidates = -1` (negative) → `None` at parse level |
+| `testParse_broken_5` | `ConfigTests.fs` | `candidates = -1` (negative) → `None` |
+| `testParse_broken_zeroCandidates` | `ConfigTests.fs` | `candidates = 0` (zero, not strictly positive) → `None` |
 
 **Untested conditions:**
-- `candidates = 0` (zero, not negative) never tested — the requirement says strictly positive
-- No test verifies the server falls back to the default value (50) when the config is rejected
+- No test verifies the server falls back to the default value (50) when the config is rejected at runtime
 
 ---
 
