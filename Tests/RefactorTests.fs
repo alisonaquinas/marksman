@@ -196,3 +196,16 @@ module RenameTests =
                 Map.find "doc2.md" expectedRanges,
                 Map.find "doc2.md" actualRanges
             )
+
+module PrepareRenameTests =
+    [<Fact>]
+    let prepareRename_onHeading_returnsRange () =
+        let doc = Helpers.FakeDoc.Mk([| "# My Heading"; ""; "body text" |])
+        let range = Refactor.renameRange doc (Position.Mk(0, 5))
+        Assert.True(Option.isSome range)
+
+    [<Fact>]
+    let prepareRename_onBodyText_returnsNone () =
+        let doc = Helpers.FakeDoc.Mk([| "# My Heading"; ""; "body text" |])
+        let range = Refactor.renameRange doc (Position.Mk(2, 2))
+        Assert.Equal(None, range)

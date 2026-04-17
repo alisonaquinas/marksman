@@ -209,6 +209,17 @@ candidates = -1
     Assert.Equal(None, actual)
 
 [<Fact>]
+let testParse_broken_zeroCandidates () =
+    let content =
+        """
+[completion]
+candidates = 0
+"""
+
+    let actual = Config.tryParse content
+    Assert.Equal(None, actual)
+
+[<Fact>]
 let testParse_broken_6 () =
     let content =
         """

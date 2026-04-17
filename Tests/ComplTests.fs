@@ -8,6 +8,7 @@ open Snapper
 open Marksman.Helpers
 open Marksman.Compl
 open Marksman.Misc
+open Marksman.Folder
 
 let tryParsePartialElement text line col = PartialElement.inText text (Position.Mk(line, col))
 let parsePartialElement text line col = tryParsePartialElement text line col |> Option.get
@@ -627,3 +628,30 @@ module Candidates =
 
         [<Fact>]
         let tagWithName () = checkSnapshot (findCandidatesInDoc folder doc1 (Position.Mk(2, 15)))
+
+module CandidatesCap =
+    [<Fact>]
+    let rawFunction_notCapped_whenPoolExceedsCap () =
+        // Create enough docs to exceed the default cap of 50
+        let others = [| for i in 1..60 -> FakeDoc.Mk($"# Doc {i}", path = $"d{i}.md") |]
+        let srcDoc = FakeDoc.Mk("[[", path = "src.md")
+        let folder = FakeFolder.Mk(seq { yield srcDoc; yield! others })
+        // Default completion cap is 50; cap applied in Server.TextDocumentCompletion via Seq.truncate
+        let cap = (Folder.configOrDefault folder).ComplCandidates()
+        let candidates = findCandidatesInDoc folder srcDoc (Position.Mk(0, 2))
+        Assert.True(
+            candidates.Length > cap,
+            $"Expected uncapped results > {cap} but got {candidates.Length}"
+        )
+
+    [<Fact>]
+    let rawFunction_allReturned_whenPoolBelowCap () =
+        let others = [| for i in 1..5 -> FakeDoc.Mk($"# Doc {i}", path = $"d{i}.md") |]
+        let srcDoc = FakeDoc.Mk("[[", path = "src.md")
+        let folder = FakeFolder.Mk(seq { yield srcDoc; yield! others })
+        let cap = (Folder.configOrDefault folder).ComplCandidates()
+        let candidates = findCandidatesInDoc folder srcDoc (Position.Mk(0, 2))
+        Assert.True(
+            candidates.Length < cap,
+            $"Expected results < cap ({cap}) but got {candidates.Length}"
+        )

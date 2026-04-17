@@ -123,3 +123,23 @@ let applyTextChange_replace_single () =
 
     let expected = "Bye World!"
     Assert.Equal(expected, actual.content)
+
+[<Fact>]
+let applyTextChange_delete_single () =
+    //                      012345678901
+    let text = Text.mkText "Hello World!"
+
+    let actual =
+        Text.applyTextChange
+            [|
+                {
+                    Range = Some(Text.mkRange ((0, 6), (0, 11)))
+                    RangeLength = Some 5
+                    Text = ""
+                }
+            |]
+            text
+
+    // Deletes "World" (chars 6-10), leaving "Hello !"
+    let expected = "Hello !"
+    Assert.Equal(expected, actual.content)

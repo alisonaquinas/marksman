@@ -1,6 +1,7 @@
 module Marksman.DiagTest
 
 open Xunit
+open Ionide.LanguageServerProtocol.Types
 
 open Marksman.Diag
 open Marksman.Helpers
@@ -118,3 +119,44 @@ let noCrossFileDiagOnSingleFileFolders () =
         ],
         diag
     )
+
+[<Fact>]
+let brokenWikiLink_hasSeverityError () =
+    let doc = FakeDoc.Mk([| "[[bad]]" |])
+    let folder = FakeFolder.Mk([ doc ])
+    let entries = checkFolder folder |> Seq.collect snd |> Array.ofSeq
+    Assert.Equal(1, entries.Length)
+    let lspDiag = diagToLsp entries[0]
+    Assert.Equal(Some DiagnosticSeverity.Error, lspDiag.Severity)
+
+[<Fact>]
+let brokenMarkdownLink_hasSeverityWarning () =
+    let doc = FakeDoc.Mk([| "[text](missing.md)" |])
+    let folder = FakeFolder.Mk([ doc ])
+    let entries = checkFolder folder |> Seq.collect snd |> Array.ofSeq
+    Assert.Equal(1, entries.Length)
+    let lspDiag = diagToLsp entries[0]
+    Assert.Equal(Some DiagnosticSeverity.Warning, lspDiag.Severity)
+
+[<Fact>]
+let brokenWikiLink_hasCodeTwo () =
+    let doc = FakeDoc.Mk([| "[[bad]]" |])
+    let folder = FakeFolder.Mk([ doc ])
+    let entries = checkFolder folder |> Seq.collect snd |> Array.ofSeq
+    Assert.Equal(1, entries.Length)
+    let lspDiag = diagToLsp entries[0]
+    Assert.Equal(Some "2", lspDiag.Code)
+
+[<Fact>]
+let ambiguousWikiLink_hasCodeOneAndRelatedInfo () =
+    let docA = FakeDoc.Mk("# Introduction", path = "a.md")
+    let docB = FakeDoc.Mk("# Introduction", path = "b.md")
+    let srcDoc = FakeDoc.Mk("[[Introduction]]", path = "src.md")
+    let folder = FakeFolder.Mk([ docA; docB; srcDoc ])
+    let entries = checkFolder folder |> Seq.collect snd |> Array.ofSeq
+    let ambiguous = entries |> Array.filter (function | AmbiguousLink _ -> true | _ -> false)
+    Assert.Single(ambiguous) |> ignore
+    let lspDiag = diagToLsp ambiguous[0]
+    Assert.Equal(Some "1", lspDiag.Code)
+    Assert.Equal(Some DiagnosticSeverity.Error, lspDiag.Severity)
+    Assert.Equal(2, (lspDiag.RelatedInformation |> Option.get).Length)

@@ -6,6 +6,7 @@ open Marksman.Helpers
 open Marksman.Toc
 open Marksman.Doc
 open Marksman.Config
+open Marksman.Misc
 
 open type System.Environment
 
@@ -379,3 +380,18 @@ module DocumentEdit =
         let action = CodeActions.tableOfContentsInner includeAllLevels doc
 
         Assert.Equal(None, action)
+
+module TocEmptyTests =
+    [<Fact>]
+    let tocAction_noHeadings_returnsNone () =
+        let doc = FakeDoc.Mk "Just some plain text.\n\nNo headings here."
+        let action = CodeActions.tableOfContentsInner includeAllLevels doc
+        Assert.Equal(None, action)
+
+module GlfmTocTests =
+    [<Fact>]
+    let glfm_disambiguates_duplicate_headings_in_toc () =
+        let doc = FakeDoc.Mk [| "## Introduction"; ""; "## Introduction" |]
+        let toc = TableOfContents.mk includeAllLevels (Doc.index doc) |> Option.get
+        let links = toc.entries |> Array.map (fun e -> Slug.toString e.link)
+        Assert.Equal<string array>([| "introduction"; "introduction-1" |], links)

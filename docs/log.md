@@ -16,6 +16,19 @@ See [[WIKI#Operations]] for operation conventions.
 
 ---
 
+## [2026-04-16] init | Tests/ — fill P1/P2 coverage gaps
+
+- Added 4 diagnostic LSP-property tests to `DiagTest.fs`: `brokenWikiLink_hasSeverityError`, `brokenMarkdownLink_hasSeverityWarning`, `brokenWikiLink_hasCodeTwo`, `ambiguousWikiLink_hasCodeOneAndRelatedInfo`
+- Added `PrepareRenameTests` module to `RefactorTests.fs`: `prepareRename_onHeading_returnsRange`, `prepareRename_onBodyText_returnsNone`
+- Added `TocEmptyTests` and `GlfmTocTests` modules to `TocTests.fs`: no-heading guard, GLFM duplicate-heading slug disambiguation (`introduction` / `introduction-1`)
+- Added `testParse_broken_zeroCandidates` to `ConfigTests.fs`: validates `candidates = 0` is rejected
+- Added `applyTextChange_delete_single` to `TextTests.fs`: delete range leaving remainder
+- Added `CandidatesCap` module to `ComplTests.fs`: verifies raw `findCandidatesInDoc` is uncapped (60 docs → >50 candidates) and returns all when pool < cap
+- All 324 tests pass (3 pre-existing skips unchanged)
+- Gaps addressed: GAP-03, GAP-05, GAP-06, GAP-07, GAP-09, GAP-11, GAP-13, GAP-16, GAP-21 (P1/P2); deferred high-effort: GAP-01 isIncomplete (server-layer), GAP-04 debounce latency, GAP-08 file extension filter, GAP-10 LSP integration harness
+
+---
+
 ## [2026-04-16] init | docs/tests/ — test coverage index with requirement cross-reference
 
 - Created [[tests/index|Test Index]]: 23 test files, ~321 tests, 2 skipped; coverage status per all 29 requirements (5 ✅ / 16 ⚠ / 8 ❌)
