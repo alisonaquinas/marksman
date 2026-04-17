@@ -16,6 +16,18 @@ See [[WIKI#Operations]] for operation conventions.
 
 ---
 
+## [2026-04-16] init | docs/tests/ — test coverage index with requirement cross-reference
+
+- Created [[tests/index|Test Index]]: 23 test files, ~321 tests, 2 skipped; coverage status per all 29 requirements (5 ✅ / 16 ⚠ / 8 ❌)
+- Created [[tests/catalog|Test Catalog]]: per-file listing of every test name with requirement tag annotations
+- Created [[tests/requirements-coverage|Requirements Coverage]]: requirement-by-requirement cross-reference table
+- Created [[tests/gaps|Coverage Gaps]]: 25 prioritised gaps (GAP-01 through GAP-25) with suggested F# test code; 8 P1 critical (zero tests), 8 P2 high, 5 P3 medium, 4 P4 low
+- Key P1 gaps: `AmbiguousLink` diagnostic has zero coverage; `isIncomplete` flag never tested; `prepareRename` never tested; `completion.candidates` cap never verified at runtime
+- Added `## Tests` section to [[index]]
+- Sources: all 23 `.fs` files under `Tests/`, `Benchmarks/Program.fs`
+
+---
+
 ## [2026-04-16] init | docs/requirements/ — Planguage functional requirements
 
 - Created [[requirements/index|Requirements Index]] with 29-row master tag table

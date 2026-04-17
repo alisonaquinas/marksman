@@ -55,6 +55,19 @@ See [[WIKI]] for operating conventions.
 
 ---
 
+## Tests
+
+Test coverage documentation: full catalog, requirement cross-reference, and prioritised gap analysis.
+
+| Page | Summary |
+|------|---------|
+| [[tests/index\|Test Index]] | Summary table: 321 tests across 23 files; 5 fully covered, 16 partial, 8 with no tests |
+| [[tests/catalog\|Test Catalog]] | Per-file listing of every test name with requirement tag annotations |
+| [[tests/requirements-coverage\|Requirements Coverage]] | Requirement-by-requirement cross-reference: which tests cover each of the 29 tags |
+| [[tests/gaps\|Coverage Gaps]] | 25 prioritised gaps with suggested test code (8 P1 critical, 8 P2 high) |
+
+---
+
 ## Requirements
 
 Planguage-style functional requirements, organised by feature area.
