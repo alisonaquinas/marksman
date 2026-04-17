@@ -264,17 +264,19 @@ let calcDiagnosticsUpdate
     }
 
 /// Background agent that debounces and publishes diagnostic updates to the client.
-type DiagnosticsManager(client: MarksmanClient) =
+/// `debounceMs` defaults to 200; pass a smaller value in tests for faster turnaround.
+type DiagnosticsManager(client: MarksmanClient, ?debounceMs: int) =
+    let timeout = defaultArg debounceMs 200
     let logger = LogProvider.getLoggerByName "BackgroundAgent"
 
     let agent: MailboxProcessor<State> =
         MailboxProcessor.Start(fun inbox ->
             let rec accumulate lastProcessedState mostRecentState =
                 async {
-                    // 200ms grace period to avoid recalculating diagnostics during active editing
+                    // Grace period to avoid recalculating diagnostics during active editing.
                     // The diagnostics update still feels pretty much instant, but doing it this
-                    // way is much more efficient
-                    let! newState = inbox.TryReceive(timeout = 200)
+                    // way is much more efficient.
+                    let! newState = inbox.TryReceive(timeout = timeout)
 
                     match newState with
                     | None -> return! publishOn lastProcessedState mostRecentState
@@ -469,10 +471,11 @@ type StateManager(initState: State) =
         member _.Dispose() = (agent :> IDisposable).Dispose()
 
 /// The main LSP server; wires together the StateManager, DiagnosticsManager, and StatusManager and implements all LSP request/notification handlers.
-type MarksmanServer(client: MarksmanClient) =
+/// `debounceMs` is forwarded to DiagnosticsManager; omit in production (defaults to 200 ms).
+type MarksmanServer(client: MarksmanClient, ?debounceMs: int) =
     inherit LspServer()
 
-    let diagnosticsManager = new DiagnosticsManager(client)
+    let diagnosticsManager = new DiagnosticsManager(client, ?debounceMs = debounceMs)
 
     let statusManager = new StatusManager(client)
 
@@ -787,20 +790,11 @@ type MarksmanServer(client: MarksmanClient) =
 
                     let maxCompletions = (Folder.configOrDefault folder).ComplCandidates()
 
-                    match
+                    let list =
                         Compl.findCandidatesInDoc folder doc pos
-                        |> Seq.truncate maxCompletions
-                        |> Array.ofSeq
-                    with
-                    | [||] -> return! None
-                    | candidates ->
-                        let isIncomplete = Array.length candidates >= maxCompletions
+                        |> Compl.applyCompletionCap maxCompletions
 
-                        {
-                            IsIncomplete = isIncomplete
-                            Items = candidates
-                            ItemDefaults = None
-                        }
+                    if Array.isEmpty list.Items then return! None else list
                 }
 
             LspResult.success candidates

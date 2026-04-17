@@ -9,6 +9,8 @@
 
     <ItemGroup>
         <Compile Include="Helpers.fs" />
+        <Compile Include="TestClient.fs" />
+        <Compile Include="ServerHarness.fs" />
         <Compile Include="SuffixTreeTests.fs" />
         <Compile Include="ParserTests.fs" />
         <Compile Include="TextTests.fs" />
@@ -31,6 +33,7 @@
         <Compile Include="MMapTests.fs" />
         <Compile Include="LensesTests.fs" />
         <Compile Include="CodeActionTests.fs" />
+        <Compile Include="GapTests.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 

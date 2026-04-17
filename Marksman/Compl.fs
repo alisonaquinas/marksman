@@ -841,6 +841,12 @@ let findCandidatesForCompl
         let cand = Candidates.findTagCandidates folder srcDoc input
         cand |> Seq.choose (Completions.tag pos compl input)
 
+/// Truncate candidates to maxCap and set IsIncomplete when the pool was larger.
+/// Called by Server.TextDocumentCompletion; exposed here for unit testing (GAP-02).
+let applyCompletionCap (maxCap: int) (candidates: seq<CompletionItem>) : CompletionList =
+    let capped = candidates |> Seq.truncate maxCap |> Array.ofSeq
+    { IsIncomplete = Array.length capped >= maxCap; Items = capped; ItemDefaults = None }
+
 /// Top-level entry point: finds the completable at `pos` and returns matching completion items.
 let findCandidatesInDoc (folder: Folder) (doc: Doc) (pos: Position) : seq<CompletionItem> =
     match findCompletableAtPos doc pos with
